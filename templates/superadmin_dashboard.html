@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Superadmin Dashboard</title>
+  </head>
+  <body>
+    <h1>Superadmin Dashboard</h1>
+    <form method="POST" action="{{ url_for('superadmin_dashboard') }}">
+      <label for="scheduling_time">Set Scheduling Time:</label>
+      <input
+        type="time"
+        id="scheduling_time"
+        name="scheduling_time"
+        value="{{ settings.scheduling_time }}"
+        required
+      />
+      <button type="submit">Update</button>
+    </form>
+
+    <h2>Current Tasks</h2>
+    <ul>
+      {% for task in tasks %}
+      <li>
+        {{ task.job_id }} - Next run: {{ task.next_run_time }}
+        <form
+          method="POST"
+          action="{{ url_for('kill_taskk', task_id=task.job_id) }}"
+          
+          
+          >
+          <button type="submit">Kill Task</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>

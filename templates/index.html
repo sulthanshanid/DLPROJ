@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Scheduler</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      form {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input,
+      textarea,
+      button {
+        margin-bottom: 10px;
+        width: 100%;
+        padding: 8px;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      li {
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Task Scheduler</h1>
+    <form id="task-form">
+      <label for="applno">Application Number:</label>
+      <input type="text" id="applno" name="applno" required />
+
+      <label for="dob">Date of Birth:</label>
+      <input type="date" id="dob" name="dob" required />
+
+      <button type="button" id="fetch-btn">Fetch Details</button>
+
+      <label for="cov">COV:</label>
+      <input type="text" id="cov" name="cov" readonly />
+
+      <label for="slotdate">Slot Date:</label>
+      <input type="date" id="slotdate" name="slotdate" readonly />
+
+      <label for="delay">Delay:</label>
+      <select id="delay" name="delay">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+
+      <label for="scheduled_date">Scheduled Date:</label>
+      <input
+        type="date"
+        id="scheduled_date"
+        name="scheduled_date"
+        value=""
+        required
+        readonly
+      />
+
+      <label for="scheduled_time">Scheduled Time:</label>
+      <input
+        type="time"
+        id="scheduled_time"
+        name="scheduled_time"
+        required
+        readonly
+      />
+
+      <button type="submit">Schedule Task</button>
+    </form>
+
+    <h2>Scheduled Tasks</h2>
+    <ul id="task-list"></ul>
+
+    <script>
+      // Function to set today's date and current time
+      function setDefaultDateTime() {
+        const today = new Date();
+        const date = today.toISOString().split("T")[0];
+        const time = today.toTimeString().split(" ")[0].substring(0, 5);
+
+        document.getElementById("scheduled_date").value = date;
+        document.getElementById("scheduled_time").value = time;
+      }
+
+      setDefaultDateTime();
+
+      // Fetch COV and SLOTDATE from the server
+      document
+        .getElementById("fetch-btn")
+        .addEventListener("click", async () => {
+          const applno = document.getElementById("applno").value;
+          const dob = document.getElementById("dob").value;
+
+          if (applno && dob) {
+            const response = await fetch("/fetch-details", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ applno, dob }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              document.getElementById("cov").value = data.cov;
+              document.getElementById("slotdate").value = data.slotdate;
+            } else {
+              alert("Error fetching details.");
+            }
+          } else {
+            alert("Please enter both Application Number and Date of Birth.");
+          }
+        });
+
+      // Handle task scheduling
+      document
+        .getElementById("task-form")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const applno = document.getElementById("applno").value;
+          const dob = document.getElementById("dob").value;
+          const cov = document.getElementById("cov").value;
+          const slotdate = document.getElementById("slotdate").value;
+          const delay = document.getElementById("delay").value;
+          const scheduledDate = document.getElementById("scheduled_date").value;
+          const scheduledTime = document.getElementById("scheduled_time").value;
+
+          const response = await fetch("/schedule", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              applno,
+              dob,
+              cov,
+              slotdate,
+              delay,
+              scheduled_date: scheduledDate,
+              scheduled_time: scheduledTime,
+            }),
+          });
+
+          if (response.ok) {
+            alert("Task scheduled successfully");
+            
+          } else {
+            const error = await response.json();
+            alert(`Error: ${error.error}`);
+          }
+        });
+
+      // Fetch the current task list from the server
+      
+    </script>
+  </body>
+</html>
