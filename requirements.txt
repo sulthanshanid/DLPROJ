@@ -1,0 +1,16 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+APScheduler
+requests
+lxml
+beautifulsoup4
+dateutil
+easyocr
+pytz
+pandas
+Pillow
+anticaptchaofficial
+pytesseract
+telegram-python
+gunicorn
