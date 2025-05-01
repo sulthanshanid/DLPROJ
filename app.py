@@ -282,7 +282,7 @@ def schedule_task():
         # Add 30-second buffer to ensure task gets scheduled properly
         run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
     else:
-        run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
+        run_time = tomorrow_6am.astimezone(pytz.utc)
 
     for task in tasks:
         new_task = ScheduledTask(

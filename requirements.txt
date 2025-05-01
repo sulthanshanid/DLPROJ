@@ -10,7 +10,7 @@ easyocr==1.7.0
 pytz==2023.3
 pandas==2.0.3
 Pillow==10.0.1
-anticaptchaofficial==1.0.9
+anticaptchaofficial
 pytesseract==0.3.10
 python-telegram-bot==20.3
 gunicorn==21.2.0
