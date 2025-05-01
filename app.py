@@ -820,4 +820,4 @@ def webhook():
         os.system('cd /home/test/DLWEB && git pull origin main ')
     return 'Updated', 200
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
