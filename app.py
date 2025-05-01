@@ -69,6 +69,8 @@ class ScheduledTask(db.Model):
     log_file = db.Column(db.String(100), nullable=True)
     cov = db.Column(db.String(50), nullable=True)
     slotdate = db.Column(db.String(10), nullable=False)
+    careoff= db.Column(db.String(10), nullable=False)
+    proxy = db.Column(db.String(10), nullable=False)
 class SchedulingSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     scheduling_time = db.Column(db.Time, nullable=False, default="08:55:00")
@@ -109,6 +111,7 @@ def dashboard():
 def fetch_task_data():
                         caperror = "Enter Valid Captcha.".encode()
                         data = request.json
+                        print(data)
                         response_data = []
                         for task in data:
                             ispassed=0
@@ -253,6 +256,7 @@ def fetch_task_data():
                         return jsonify(response_data)
                             
 
+from datetime import datetime, timedelta, time
 
 
 # Assuming `scheduler` has been initialized as an instance of BackgroundScheduler
@@ -264,33 +268,42 @@ def schedule_task():
     data = request.json
     tasks = data.get('tasks')
     settings = SchedulingSettings.query.first()
-    
-    scheduling_time = settings.scheduling_time
+
     if not tasks:
         return jsonify({'error': 'No tasks provided'}), 400
-    task_time= pytz.timezone("Asia/Kolkata").localize(datetime.strptime(datetime.now().strftime("%Y-%m-%d") + " " + scheduling_time.strftime("%H:%M:%S"), "%Y-%m-%d %H:%M:%S")).astimezone(pytz.utc)
+
+    india = pytz.timezone("Asia/Kolkata")
+    now = datetime.now(india)
+    today_9am = india.localize(datetime.combine(now.date(), time(9, 0)))
+    tomorrow_6am = india.localize(datetime.combine(now.date() + timedelta(days=1), time(6, 0)))
+
+    # Determine run time
+    if now < today_9am:
+        # Add 30-second buffer to ensure task gets scheduled properly
+        run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
+    else:
+        run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
 
     for task in tasks:
         new_task = ScheduledTask(
-    applications=task['applno'],
-    dob = datetime.strptime(task['dob'], "%Y-%m-%d").strftime("%d/%m/%Y"),
-    
-    cov=str(task['cov']).replace(" ", ""),
-    scheduled_date=datetime.now().strftime("%Y-%m-%d"),
-    status="Pending",
-    slotdate=datetime.strptime(task['slotdate'], "%Y-%m-%d").strftime("%d-%m-%Y")
-)
+            applications=task['applno'],
+            dob=datetime.strptime(task['dob'], "%d-%m-%Y").strftime("%d-%m-%Y"),
+            cov=str(task['cov']).replace(" ", ""),
+            scheduled_date=now.strftime("%Y-%m-%d"),
+            status="Pending",
+            slotdate=datetime.strptime(task['slotdate'], "%Y-%m-%d").strftime("%d-%m-%Y"),
+            careoff=task['careoff'],
+            proxy=task['proxy']
+        )
         db.session.add(new_task)
         db.session.commit()
-        scheduler.add_job(run_game_script, 'date', run_date=task_time, args=[new_task.id])
+        scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id])
 
-        # Calculate when to schedule the task (i.e., at the slotdate and time)
-         # Adjust format as per input
+    return jsonify({
+        'message': 'Tasks scheduled successfully',
+        'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
+    }), 201
 
-        # Schedule the game.py script to run at the specified time
-        
-
-    return jsonify({'message': 'Tasks scheduled successfully'}), 201
 
 
 
@@ -317,11 +330,10 @@ def retry_commit(session, retries=5, delay=1):
     raise sqlite3.OperationalError("Failed to commit to the database after multiple retries.")
 
 def run_game_script(task_id):
-    # Generate a unique log file name based on task_id and timestamp with microseconds
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
     log_file = f'logs/{task_id}_{timestamp}.log'
 
-    # Create a logger for this task with the unique log file
+    # Set up logger
     logger = logging.getLogger(f'task_{task_id}')
     logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(log_file)
@@ -333,44 +345,38 @@ def run_game_script(task_id):
         if task:
             task.status = "Running"
             task.log_file = log_file
-            task.output = ""
+            retry_commit(db.session)
+
             logger.info(f"Starting task ID {task_id} for application {task.applications}")
 
-            command = ["python", "-u", "game.py", task.cov, task.applications, task.dob, task.slotdate, "ABB", "1"]
+            command = ["python", "-u", "game.py",  task.applications, task.cov,task.dob, task.slotdate, task.careoff, task.proxy]
             try:
-                print("hello")
                 process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 active_processes[task_id] = process
-                retry_commit(db.session)  # Retry commit logic here
-                
-                # Capture output line-by-line
+
                 for line in iter(process.stdout.readline, ''):
                     logger.info(line.strip())
-                    task.output += line.strip() + '\n'
-                
-                # Wait for the process to complete and get the return code
+
                 process.wait()
+
                 if process.returncode == 0:
                     task.status = "Completed"
                 else:
                     task.status = "Failed"
                     for error_line in iter(process.stderr.readline, ''):
                         logger.error(error_line.strip())
-                        task.output += error_line.strip() + '\n'
 
             except FileNotFoundError:
                 task.status = "Failed"
-                task.output = "game.py not found"
                 logger.error("game.py not found")
 
             finally:
                 task.log_file = log_file
-                retry_commit(db.session)  # Retry commit in the finally block
+                retry_commit(db.session)
+                logger.info(f"Task ID {task_id} status updated to {task.status}")
 
-            logger.info(f"Task ID {task_id} status updated to {task.status}")
-
-            # Remove the logger handlers to avoid duplication
-            logger.handlers.clear()
+                # Clean up logger
+                logger.handlers.clear()
 
 @app.route('/fetch_slot_checkdate', methods=['POST'])
 
@@ -471,9 +477,11 @@ def add_task():
 def view_tasks():
     # Query all scheduled tasks from the database
     tasks = ScheduledTask.query.all()
-    
+    careoffs = sorted(set(task.careoff for task in tasks))
+    return render_template("view_tasks.html", tasks=tasks, careoffs=careoffs)
+
     # Return tasks in a simple HTML table view
-    return render_template('view_tasks.html', tasks=tasks)
+    
 @app.route('/kill_task/<int:task_id>', methods=['GET'])  # Changed to POST for better semantics
 def kill_task(task_id):
     
@@ -639,60 +647,115 @@ def img_to_appl():
 
                         
                         print("\n")
-                        url = 'https://lens.google.com/v3/upload?re=df&stcs=1696050670318&vpw=1707&vph=833&ep=subb'
+                        print("Processing image:", path)
 
-                        # Define the payload with image data
-                        files = {
-                            'encoded_image': (path, image_data, 'image/jpeg')
+                        # Perform OCR on the image
+                        headers = {
+                            "Cookie": "MMCASM=ID=0103E2B3466B44BDA0639A88496C0909;",  # Replace with a valid cookie
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                         }
 
-                        # Send the POST request
-                        response = requests.post(url, files=files, timeout=8)
+                        # Get the current directory
+                        folder_dir = os.getcwd()
 
-                        r3 = str(response.content)
-                        r4 = r3.replace('"', '')
-                        phoneNumRegex2 = re.compile(r'KL\s*\d+\s*/\s*\d+\s*/\s*\d+')
+                        
+                        import base64
+                        from requests_toolbelt.multipart.encoder import MultipartEncoder
 
-                        mo = phoneNumRegex2.search(str(r4))
-                        application_no_pattern = r"Application No : (\d+)"
-                        dob_pattern = r"(\d{2}-\d{2}-\d{4})"
-                        matches = re.search(application_no_pattern, r4)
-                        matchess = re.findall(dob_pattern, r4)
-                        success = 0
-                        valid_dobs = [dob for dob in matchess if int(dob[-4:]) <= 2019]
 
-                        if mo:
-                            learner = str(mo.group())
-                            learner = learner.replace(" ", "")
-                            learner = learner[0:4] + " " + learner[4:17]
-                            print(learner)
+                        # Step 1: Encode the image in Base64
+                        with open(path, "rb") as img_file:
+                            encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
 
-                            dob_url = "https://sarathi.parivahan.gov.in:443/sarathiservice/getApplNumAndDobByLicNum.do"
-                            dob_headers = {
-                                "Accept": "application/json, text/javascript, */*; q=0.01",
-                                "X-Requested-With": "XMLHttpRequest",
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.115 Safari/537.36",
-                                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                                "Referer": "https://sarathi.parivahan.gov.in/sarathiservice/printlearerslicence.do",
-                                "Connection": "close"
-                            }
-                            dob_data = {"licNum": learner}
-                            dob_req = requests.post(dob_url, headers=dob_headers, data=dob_data)
-                            dob = dob_req.text.replace('"', '')
-                            dobfinal = dob.split('#')[1]
-                            applicationid = dob.split('#')[0]
-                            success = 1
+                        # Step 2: Send image to Bing Image Search API
+                        url_upload = "https://www.bing.com/images/search?view=detailv2&iss=sbiupload&FORM=SBIVSP"
+                        multipart_data = MultipartEncoder(fields={"cbir": "sbi", "imageBin": encoded_image})
+                        headers["Content-Type"] = multipart_data.content_type
+                        response = requests.post(url_upload, headers=headers, data=multipart_data,
+                                                allow_redirects=False)
 
-                        if valid_dobs:
-                            dobfinal = valid_dobs[0]
-                            if matches:
-                                applicationid = matches.group(1)
-                                success = 1
-
-                        if success == 0:
-                            print("error")
+                        # Step 3: Extract insightsToken from redirect URL
+                        if "Location" in response.headers:
+                            redirect_url = response.headers["Location"]
+                            match = re.search(r"insightsToken=([^&]+)", redirect_url)
+                            if match:
+                                insights_token = match.group(1)
+                                # print("Extracted insightsToken:", insights_token)
+                            else:
+                                print("insightsToken not found.")
+                                continue
+                        else:
+                            print("No redirect location found.")
                             continue
 
+                        # Step 4: Send request for OCR text extraction
+                        url_knowledge = "https://www.bing.com/images/api/custom/knowledge?skey=AgaSJGcgQ131498nAy7btVt_1NdDNxy1QhIqsZbgBrw"
+                        knowledge_request_data = {
+                            "imageInfo": {"imageInsightsToken": insights_token, "source": "Url",
+                                        "cropArea": {"top": "0", "left": "0", "right": "1",
+                                                    "bottom": "1"}},
+                            "knowledgeRequest": {"invokedSkills": ["OCR"], "index": 2}
+                        }
+                        multipart_data_2 = MultipartEncoder(
+                            fields={"knowledgeRequest": str(knowledge_request_data)})
+                        headers["Content-Type"] = multipart_data_2.content_type
+                        response_knowledge = requests.post(url_knowledge, headers=headers,
+                                                        data=multipart_data_2)
+
+                        # Step 5: Extract and clean OCR results
+                        if response_knowledge.status_code == 200:
+                            extracted_text = response_knowledge.text.replace("\\", "")
+                            extracted_text = extracted_text.replace(".", "")  # Remove escape slashes
+                            # print("OCR Extracted Text:", extracted_text)
+
+                            # Use regex patterns
+                            phoneNumRegex2 = re.compile(r'KL\s*\d+\s*/\s*\d+\s*/\s*\d+')
+                            application_no_pattern = r"Application No : (\d+)"
+                            dob_pattern = r"(\d{2}-\d{2}-\d{4})"
+
+                            mo = phoneNumRegex2.search(extracted_text)
+                            matches = re.search(application_no_pattern, extracted_text)
+                            matchess = re.findall(dob_pattern, extracted_text)
+
+                            success = 0
+                            valid_dobs = [dob for dob in matchess if int(dob[-4:]) <= 2019]
+
+                            if mo:
+                                learner = str(mo.group()).replace(" ", "")
+                                learner = str(learner[:4] + " " + learner[4:17])
+                                print("Learner ID:", learner)
+
+                                dob_url = "https://sarathi.parivahan.gov.in:443/sarathiservice/getApplNumAndDobByLicNum.do"
+                                dob_headers = {
+                                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                                    "X-Requested-With": "XMLHttpRequest",
+                                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.115 Safari/537.36",
+                                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                                    "Referer": "https://sarathi.parivahan.gov.in/sarathiservice/printlearerslicence.do",
+                                    "Connection": "close"
+                                }
+                                dob_data = {"licNum": learner}
+                                dob_req = requests.post(dob_url, headers=dob_headers, data=dob_data)
+                                dob = dob_req.text.replace('"', '')
+                                dobfinal = dob.split('#')[1]
+                                applicationid = dob.split('#')[0]
+                                success = 1
+
+                            if valid_dobs:
+                                dobfinal = valid_dobs[0]
+                                if matches:
+                                    applicationid = matches.group(1)
+                                    success = 1
+
+                            if success == 0:
+                                print("Error: Could not extract required information.")
+                                continue
+
+                            print("Application ID:", applicationid)
+                            print("Date of Birth:", dobfinal)
+                        else:
+                            print("Error in OCR extraction:", response_knowledge.status_code)
+                            continue
                         print(applicationid + "\n" + dobfinal)
                         dob_object = datetime.strptime(dobfinal, "%d-%m-%Y")
                         dobfinal_new = dob_object.strftime("%Y-%m-%d")
@@ -709,6 +772,47 @@ def img_to_appl():
                 continue
     results = list(results)  # Convert set to list
     return jsonify({'data': results})
+from flask import send_file
+
+@app.route('/pdfs/<careoff>')
+def zip_pdfs_by_careoff(careoff):
+    import datetime
+    import io
+    from zipfile import ZipFile
+
+    # Get today's date as folder name (e.g., '27-10-2025')
+    today = datetime.date.today().strftime("%d-%m-%Y")
+    
+    # Directory path: pdfs/27-10-2025/<careoff>
+    pdf_folder = os.path.join(app.root_path, today, careoff)
+
+    # Check if directory exists
+    if not os.path.isdir(pdf_folder):
+        abort(404, description=f"No PDFs found for careoffff '{careoff}' on {today}.")
+
+    # Collect all .pdf files in the directory
+    pdf_files = [f for f in os.listdir(pdf_folder) if f.endswith('.pdf')]
+    if not pdf_files:
+        abort(404, description=f"No PDF files found for careoff '{careoff}' on {today}.")
+
+    # Create in-memory ZIP file
+    memory_file = io.BytesIO()
+    with ZipFile(memory_file, 'w') as zipf:
+        for pdf in pdf_files:
+            filepath = os.path.join(pdf_folder, pdf)
+            zipf.write(filepath, arcname=pdf)
+
+    memory_file.seek(0)
+
+    # Send the ZIP file as response
+    zip_filename = f"{careoff}_pdfs_{today}.zip"
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        download_name=zip_filename,
+        as_attachment=True
+    )
+
 @app.route('/webhook', methods=['GET'])
 def webhook():
     data = request.json

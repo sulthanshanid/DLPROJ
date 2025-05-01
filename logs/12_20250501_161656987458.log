@@ -1,0 +1,45 @@
+2025-05-01 16:16:57,007 - INFO - Starting task ID 12 for application 1121543525
+2025-05-01 16:17:07,042 - INFO - 1121543525 12-10-2001 LMV,MCWG 10-12-2005 SAM NO TRUE 1
+2025-05-01 16:17:07,043 - INFO - 
+2025-05-01 16:17:07,044 - INFO - Time reached: Starting the code...
+2025-05-01 16:17:07,045 - INFO - 
+2025-05-01 16:17:07,049 - INFO - 
+2025-05-01 16:17:07,051 - INFO - Selected Proxy: {}
+2025-05-01 16:17:07,051 - INFO - {}
+2025-05-01 16:17:07,052 - INFO - start
+2025-05-01 16:17:07,054 - INFO - [WinError 183] Cannot create a file when that file already exists: '01-05-2025/SAM/LMV,MCWG/'
+2025-05-01 16:17:07,054 - INFO - start
+2025-05-01 16:17:07,742 - INFO - making request to createTask
+2025-05-01 16:17:08,613 - INFO - created task with id 925758556
+2025-05-01 16:17:09,615 - INFO - making request to getTaskResult
+2025-05-01 16:17:14,915 - INFO - task is still processing
+2025-05-01 16:17:15,919 - INFO - making request to getTaskResult
+2025-05-01 16:17:16,212 - INFO - task solved
+2025-05-01 16:17:16,212 - INFO - captcha text ycvWvJ
+2025-05-01 16:17:16,212 - INFO - ycvWvJ
+2025-05-01 16:17:17,441 - INFO - Captcha success
+2025-05-01 16:17:30,049 - INFO - 
+2025-05-01 16:17:30,049 - INFO - Selected Date is Past Date.
+2025-05-01 16:17:30,049 - INFO - 
+2025-05-01 16:17:30,050 - INFO - 
+2025-05-01 16:17:30,050 - INFO - Session is Expired
+2025-05-01 16:17:30,050 - INFO - 
+2025-05-01 16:17:42,836 - INFO - 
+2025-05-01 16:17:42,836 - INFO - Selected Date is Past Date.
+2025-05-01 16:17:42,836 - INFO - 
+2025-05-01 16:17:42,836 - INFO - 
+2025-05-01 16:17:42,836 - INFO - Session is Expired
+2025-05-01 16:17:42,836 - INFO - 
+2025-05-01 16:17:53,511 - INFO - 
+2025-05-01 16:17:53,511 - INFO - Selected Date is Past Date.
+2025-05-01 16:17:53,511 - INFO - 
+2025-05-01 16:17:53,512 - INFO - 
+2025-05-01 16:17:53,512 - INFO - Session is Expired
+2025-05-01 16:17:53,512 - INFO - 
+2025-05-01 16:17:59,958 - ERROR - Traceback (most recent call last):
+2025-05-01 16:17:59,959 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 158, in <module>
+2025-05-01 16:17:59,959 - ERROR - os.makedirs(PDF_FOLD)
+2025-05-01 16:17:59,959 - ERROR - File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\lib\os.py", line 225, in makedirs
+2025-05-01 16:17:59,959 - ERROR - mkdir(name, mode)
+2025-05-01 16:17:59,959 - ERROR - FileExistsError: [WinError 183] Cannot create a file when that file already exists: '01-05-2025/SAM/LMV,MCWG/'
+2025-05-01 16:17:59,974 - INFO - Task ID 12 status updated to Failed

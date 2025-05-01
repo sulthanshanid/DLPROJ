@@ -98,10 +98,6 @@
         border-radius: 10px;
       }
 
-      .upload-section input[type="file"] {
-        margin: 10px 0;
-      }
-
       @media (max-width: 768px) {
         table {
           font-size: 12px;
@@ -122,10 +118,17 @@
   <body>
     <header>
       <h2>Dashboard</h2>
-      <a href="" style="color: white">Logout</a>
+      <a href="#" style="color: white">Logout</a>
     </header>
 
     <div class="container">
+      <div style="text-align: center">
+        <label>Care Of:</label>
+        <input type="text" id="careoff" />
+        <label>Proxy (YES/NO):</label>
+        <input type="text" id="proxy" />
+      </div>
+
       <h3>Scheduled Tasks</h3>
       <table id="taskTable">
         <thead>
@@ -134,15 +137,15 @@
             <th>Date of Birth</th>
             <th>Name</th>
             <th>COV</th>
+            <th>Status</th>
+            <th>Retry</th>
           </tr>
         </thead>
-        <tbody>
-          <!-- Dynamic rows will be added here -->
-        </tbody>
+        <tbody></tbody>
       </table>
 
       <button onclick="addRow()">Add Row</button>
-      <button onclick="fetchData()">Fetch Data</button>
+      <button onclick="fetchAllData()">Fetch All</button>
 
       <h3>Slot Date</h3>
       <label for="slotdate">Enter Slot Date: </label>
@@ -155,7 +158,7 @@
       </form>
 
       <div class="upload-section">
-        <h3>Upload Images</h3>
+        
         <input type="file" id="fileInput" multiple />
         <button onclick="uploadImages()">Upload</button>
       </div>
@@ -164,133 +167,152 @@
     <div id="overlay">Server is fetching data, please wait...</div>
 
     <script>
-      let rowIndex = 0; // Make sure this is initialized to keep track of the row index
-
-      function addRow() {
-        const tableBody = document
-          .getElementById("taskTable")
-          .getElementsByTagName("tbody")[0];
-
-        // Insert a new row at the end of the table body
-        const newRow = tableBody.insertRow();
-        rowIndex++; // Increment the row index for unique IDs
-
-        // Create new cells with unique IDs
-        const cell1 = newRow.insertCell(0);
-        const cell2 = newRow.insertCell(1);
-        const cell3 = newRow.insertCell(2);
-        const cell4 = newRow.insertCell(3);
-
-        // Append input elements to the new cells
-        cell1.innerHTML = `<input type="text" name="applno" id="applno_${rowIndex}" required>`;
-        cell2.innerHTML = `<input type="date" name="dob" id="dob_${rowIndex}" required>`;
-        cell3.innerHTML = `<input type="text" id="name_${rowIndex}" disabled>`;
-        cell4.innerHTML = `<input type="text" id="cov_${rowIndex}" disabled>`;
-      }
+      let rowIndex = 0;
 
       function formatDate(dateString) {
         const [year, month, day] = dateString.split("-");
         return `${day}-${month}-${year}`;
       }
 
-      function fetchData() {
-        const rows = document
+      function addRow(applno = "", dob = "") {
+        const tableBody = document
           .getElementById("taskTable")
-          .getElementsByTagName("tbody")[0].rows;
-        let data = [];
+          .getElementsByTagName("tbody")[0];
+        const newRow = tableBody.insertRow();
+        rowIndex++;
 
-        for (let row of rows) {
-          const applno = row.cells[0].children[0].value;
-          const dob = row.cells[1].children[0].value;
+        newRow.innerHTML = `
+          <td><input type="text" id="applno_${rowIndex}" value="${applno}" required></td>
+          <td><input type="date" id="dob_${rowIndex}" value="${dob}" required></td>
+          <td><input type="text" id="name_${rowIndex}" disabled></td>
+          <td><input type="text" id="cov_${rowIndex}" disabled></td>
+          <td id="status_${rowIndex}">Pending</td>
+          <td><button onclick="fetchRow(${rowIndex})" id="retry_${rowIndex}" style="display:none">Retry</button></td>
+        `;
+      }
 
-          if (applno && dob) {
-            data.push({ applno, dob: formatDate(dob) });
-          }
+      function fetchAllData() {
+        const data = [];
+        for (let i = 1; i <= rowIndex; i++) {
+          const applno = document.getElementById(`applno_${i}`).value;
+          const dobRaw = document.getElementById(`dob_${i}`).value;
+          if (!applno || !dobRaw) continue;
+
+          data.push({
+            applno,
+            dob: formatDate(dobRaw),
+            careof: document.getElementById("careoff").value,
+            proxy: document.getElementById("proxy").value,
+            rowId: i,
+          });
+
+          document.getElementById(`status_${i}`).innerText = "Fetching...";
         }
 
-        const overlay = document.getElementById("overlay");
-        overlay.style.display = "flex";
+        document.getElementById("overlay").style.display = "flex";
 
         fetch("/fetch_task_data", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         })
-          .then((response) => {
-            if (response.ok) {
-              return response.json();
+          .then((res) => res.json())
+          .then((results) => {
+            results.forEach((res, index) => {
+              const id = data[index].rowId;
+              if (res.name && res.cov) {
+                document.getElementById(`name_${id}`).value = res.name;
+                document.getElementById(`cov_${id}`).value = res.cov;
+                document.getElementById(`status_${id}`).innerText = "Success";
+              } else {
+                document.getElementById(`status_${id}`).innerText =
+                  "Failed to fetch";
+                document.getElementById(`retry_${id}`).style.display =
+                  "inline-block";
+              }
+            });
+            document.getElementById("overlay").style.display = "none";
+          })
+          .catch(() => {
+            alert("Bulk fetch failed");
+            document.getElementById("overlay").style.display = "none";
+          });
+      }
+
+      function fetchRow(id) {
+        const applno = document.getElementById(`applno_${id}`).value;
+        const dob = formatDate(document.getElementById(`dob_${id}`).value);
+
+        document.getElementById(`status_${id}`).innerText = "Retrying...";
+
+        fetch("/fetch_task_data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([{ applno, dob }]),
+        })
+          .then((res) => res.json())
+          .then(([res]) => {
+            if (res.name && res.cov) {
+              document.getElementById(`name_${id}`).value = res.name;
+              document.getElementById(`cov_${id}`).value = res.cov;
+              document.getElementById(`status_${id}`).innerText = "Success";
+              document.getElementById(`retry_${id}`).style.display = "none";
             } else {
-              throw new Error("Failed to fetch data.");
+              document.getElementById(`status_${id}`).innerText =
+                "Retry Failed";
             }
-          })
-          .then((result) => {
-            for (let i = 0; i < result.length; i++) {
-              document.getElementById(`name_${i + 1}`).value = result[i].name;
-              document.getElementById(`cov_${i + 1}`).value = result[i].cov;
-            }
-            overlay.style.display = "none";
-            alert("Data fetched successfully!");
-          })
-          .catch((error) => {
-            overlay.innerText = "Failed to fetch data.";
-            setTimeout(() => (overlay.style.display = "none"), 2000);
           });
       }
 
       function fetchSlotDate() {
-        const overlay = document.getElementById("overlay");
-        overlay.style.display = "flex";
+        document.getElementById("overlay").style.display = "flex";
         fetch("/fetch_slot_checkdate", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({}),
+          headers: { "Content-Type": "application/json" },
         })
           .then((response) => response.json())
           .then((result) => {
-            overlay.style.display = "none";
-            if (result.slotdate == "") {
-              alert("date not found");
+            document.getElementById("overlay").style.display = "none";
+            if (result.slotdate) {
+              document.getElementById("slotdate").value = result.slotdate
+                .split("-")
+                .reverse()
+                .join("-");
+            } else {
+              alert("Date not found");
             }
-            var date = result.slotdate;
-            var newdate = date.split("-").reverse().join("-");
-            document.getElementById("slotdate").value = newdate;
           });
       }
 
       function submitTasks() {
-        const rows = document
-          .getElementById("taskTable")
-          .getElementsByTagName("tbody")[0].rows;
-        let tasks = [];
+        const tasks = [];
         const slotdate = document.getElementById("slotdate").value;
+        for (let i = 1; i <= rowIndex; i++) {
+          const applno = document.getElementById(`applno_${i}`).value;
+          const dob = formatDate(document.getElementById(`dob_${i}`).value);
+          const name = document.getElementById(`name_${i}`).value;
+          const cov = document.getElementById(`cov_${i}`).value;
 
-        for (let row of rows) {
-          const applno = row.cells[0].children[0].value;
-          const dob = row.cells[1].children[0].value;
-          const name = row.cells[2].children[0].value;
-          const cov = row.cells[3].children[0].value;
-
-          if (applno && dob && name && cov && slotdate) {
-            tasks.push({ applno, dob, name, cov, slotdate });
+          if (applno && dob && name && cov) {
+            tasks.push({
+              applno,
+              dob,
+              name,
+              cov,
+              slotdate,
+              careoff: document.getElementById("careoff").value,
+              proxy: document.getElementById("proxy").value,
+            });
           }
         }
 
         fetch("/schedule", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tasks }),
         })
-          .then((response) => response.json())
-          .then((result) => {
-            alert(result.message);
-          });
-          location.reload()
+          .then((res) => res.json())
+          .then((result) => alert(result.message));
       }
 
       function uploadImages() {

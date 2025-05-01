@@ -1,0 +1,8 @@
+2025-05-01 15:19:19,384 - INFO - Starting task ID 1 for application 1176978325
+2025-05-01 15:19:23,963 - ERROR - Traceback (most recent call last):
+2025-05-01 15:19:23,963 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 59, in <module>
+2025-05-01 15:19:23,963 - ERROR - print("\n\u23f1\ufe0f Time reached: Starting the code...\n")
+2025-05-01 15:19:23,963 - ERROR - File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\lib\encodings\cp1252.py", line 19, in encode
+2025-05-01 15:19:23,963 - ERROR - return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+2025-05-01 15:19:23,963 - ERROR - UnicodeEncodeError: 'charmap' codec can't encode characters in position 2-3: character maps to <undefined>
+2025-05-01 15:19:23,980 - INFO - Task ID 1 status updated to Failed

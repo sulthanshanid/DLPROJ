@@ -1,0 +1,40 @@
+2025-05-01 16:16:57,170 - INFO - Starting task ID 13 for application 835340025
+2025-05-01 16:17:07,042 - INFO - 835340025 15-08-1997 MCWG 10-12-2005 SAM NO TRUE 1
+2025-05-01 16:17:07,043 - INFO - 
+2025-05-01 16:17:07,044 - INFO - Time reached: Starting the code...
+2025-05-01 16:17:07,044 - INFO - 
+2025-05-01 16:17:07,049 - INFO - 
+2025-05-01 16:17:07,050 - INFO - Selected Proxy: {}
+2025-05-01 16:17:07,050 - INFO - {}
+2025-05-01 16:17:07,051 - INFO - start
+2025-05-01 16:17:07,839 - INFO - making request to createTask
+2025-05-01 16:17:08,683 - INFO - created task with id 106180823
+2025-05-01 16:17:09,693 - INFO - making request to getTaskResult
+2025-05-01 16:17:14,981 - INFO - task is still processing
+2025-05-01 16:17:15,983 - INFO - making request to getTaskResult
+2025-05-01 16:17:16,269 - INFO - task solved
+2025-05-01 16:17:16,269 - INFO - captcha text QUVSHi
+2025-05-01 16:17:16,269 - INFO - QUVSHi
+2025-05-01 16:17:16,635 - INFO - Captcha error
+2025-05-01 16:17:16,731 - INFO - making request to createTask
+2025-05-01 16:17:17,014 - INFO - created task with id 125342779
+2025-05-01 16:17:18,015 - INFO - making request to getTaskResult
+2025-05-01 16:17:23,299 - INFO - task is still processing
+2025-05-01 16:17:24,301 - INFO - making request to getTaskResult
+2025-05-01 16:17:24,585 - INFO - task solved
+2025-05-01 16:17:24,586 - INFO - captcha text Obdvap
+2025-05-01 16:17:24,586 - INFO - Obdvap
+2025-05-01 16:17:25,290 - INFO - Captcha success
+2025-05-01 16:17:41,632 - INFO - 
+2025-05-01 16:17:41,632 - INFO - Selected Date is Past Date.
+2025-05-01 16:17:41,632 - INFO - 
+2025-05-01 16:17:41,633 - INFO - 
+2025-05-01 16:17:41,633 - INFO - Session is Expired
+2025-05-01 16:17:41,633 - INFO - 
+2025-05-01 16:17:55,552 - INFO - 
+2025-05-01 16:17:55,552 - INFO - Selected Date is Past Date.
+2025-05-01 16:17:55,552 - INFO - 
+2025-05-01 16:17:55,552 - INFO - 
+2025-05-01 16:17:55,552 - INFO - Session is Expired
+2025-05-01 16:17:55,552 - INFO - 
+2025-05-01 16:17:57,436 - INFO - Task ID 13 status updated to Failed

@@ -1,0 +1,152 @@
+2025-05-01 15:42:28,844 - INFO - Starting task ID 6 for application 1176978325
+2025-05-01 15:42:34,343 - INFO - 1176978325 24-03/2007 LMV,MCWG 10-11-2025   TRUE 1
+2025-05-01 15:42:34,343 - INFO - 
+2025-05-01 15:42:34,344 - INFO - Time reached: Starting the code...
+2025-05-01 15:42:34,344 - INFO - 
+2025-05-01 15:42:34,347 - INFO - 
+2025-05-01 15:42:34,347 - INFO - Selected Proxy: {}
+2025-05-01 15:42:34,348 - INFO - {}
+2025-05-01 15:42:34,348 - INFO - start
+2025-05-01 15:42:34,991 - INFO - making request to createTask
+2025-05-01 15:42:35,823 - INFO - created task with id 327224741
+2025-05-01 15:42:36,834 - INFO - making request to getTaskResult
+2025-05-01 15:42:42,112 - INFO - task is still processing
+2025-05-01 15:42:43,121 - INFO - making request to getTaskResult
+2025-05-01 15:42:43,400 - INFO - task solved
+2025-05-01 15:42:43,400 - INFO - captcha text 7tuUF5
+2025-05-01 15:42:43,400 - INFO - 7tuUF5
+2025-05-01 15:42:44,124 - INFO - Captcha success
+2025-05-01 15:42:44,599 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:44,600 - INFO - start
+2025-05-01 15:42:45,158 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:45,158 - INFO - start
+2025-05-01 15:42:45,766 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:45,766 - INFO - start
+2025-05-01 15:42:46,354 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:46,354 - INFO - start
+2025-05-01 15:42:46,986 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:46,986 - INFO - start
+2025-05-01 15:42:47,571 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:47,571 - INFO - start
+2025-05-01 15:42:48,227 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:48,228 - INFO - start
+2025-05-01 15:42:48,821 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:48,821 - INFO - start
+2025-05-01 15:42:49,431 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:49,432 - INFO - start
+2025-05-01 15:42:50,013 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:50,013 - INFO - start
+2025-05-01 15:42:50,572 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:50,573 - INFO - start
+2025-05-01 15:42:51,076 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:51,076 - INFO - start
+2025-05-01 15:42:51,629 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:51,629 - INFO - start
+2025-05-01 15:42:52,223 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:52,223 - INFO - start
+2025-05-01 15:42:52,733 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:52,733 - INFO - start
+2025-05-01 15:42:53,354 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:53,354 - INFO - start
+2025-05-01 15:42:53,948 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:53,948 - INFO - start
+2025-05-01 15:42:54,483 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:54,483 - INFO - start
+2025-05-01 15:42:55,016 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:55,016 - INFO - start
+2025-05-01 15:42:55,555 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:55,555 - INFO - start
+2025-05-01 15:42:56,148 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:56,148 - INFO - start
+2025-05-01 15:42:56,724 - INFO - name 'proceeddata' is not defined
+2025-05-01 15:42:56,724 - INFO - start
+2025-05-01 15:43:00,245 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,245 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,245 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,245 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,246 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,246 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,246 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,246 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,246 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,246 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,247 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,247 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,247 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,247 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,247 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,247 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,247 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,247 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,247 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,247 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,247 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,247 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,248 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,248 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,248 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,248 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,248 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,248 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,248 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,248 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,248 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,248 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,249 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,249 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,249 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,249 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,249 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,249 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,249 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,249 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,249 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,249 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,249 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,249 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,249 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,250 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,250 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,250 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,250 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,250 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,250 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,250 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,250 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,250 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,250 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,250 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,250 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,251 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,251 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,251 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,251 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,251 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,251 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,252 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,252 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,252 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,252 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,252 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,252 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,252 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,252 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,252 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,253 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,253 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,253 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,253 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,253 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,253 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,253 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,253 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,254 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,254 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,254 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,254 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,254 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,254 - ERROR - File "C:\Users\User\Downloads\DLPROJ\game.py", line 310, in <module>
+2025-05-01 15:43:00,254 - ERROR - purp0_data = proceeddata
+2025-05-01 15:43:00,254 - ERROR - NameError: name 'proceeddata' is not defined
+2025-05-01 15:43:00,254 - ERROR - Traceback (most recent call last):
+2025-05-01 15:43:00,271 - INFO - Task ID 6 status updated to Failed
