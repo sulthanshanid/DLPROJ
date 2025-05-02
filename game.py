@@ -51,17 +51,28 @@ STARTBEFOREONLY = "TRUE"
 
 from datetime import datetime
 print(APPLNO,DOB,TYPE,SLOTDATE,CAREOFF,PROXYCON,STARTBEFOREONLY,SLEEPCON)
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+import time
+
+STARTBEFOREONLY = "TRUE"
+
 if STARTBEFOREONLY == "TRUE":
+    india = ZoneInfo("Asia/Kolkata")
+    
     while True:
-        now = datetime.now()
+        now = datetime.now(india)
         target_time = now.replace(hour=8, minute=47, second=0, microsecond=0)
+
+        # If current time is past the target, start
         if now >= target_time:
             print("\n Time reached: Starting the code...\n")
             break
         else:
             remaining = target_time - now
-            print(f"\r Code starts at 8:47 AM. Time remaining: {str(remaining).split('.')[0]}", end='')
+            print(f"\r Code starts at 8:47 AM IST. Time remaining: {str(remaining).split('.')[0]}", end='')
             time.sleep(1)
+
 
 TIMESLOT = ["08.00-08.10", "08.11-08.20", "08.21-08.30", "08.31-08.40"]
 caperror = "Invalid Captcha. Please Enter Correct Captcha".encode()
