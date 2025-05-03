@@ -29,6 +29,26 @@ from anticaptchaofficial.imagecaptcha import *
 import requests
 from requests.exceptions import ConnectionError, Timeout
 import time
+from swiftshadow import QuickProxy
+import requests
+from PIL import Image
+import requests
+import time
+from bs4 import BeautifulSoup
+import telegram
+import os
+from datetime import date
+from PIL import Image
+import tempfile
+from anticaptchaofficial.imagecaptcha import *
+import requests
+from requests.exceptions import ConnectionError, Timeout
+import time
+import traceback
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+import time
+from datetime import datetime
 '''
 proxy = 'http://127.0.0.1:8080'
 os.environ['http_proxy'] = proxy
@@ -49,11 +69,9 @@ else:
     SLEEPCON = 1
 STARTBEFOREONLY = "TRUE"
 
-from datetime import datetime
+
 print(APPLNO,DOB,TYPE,SLOTDATE,CAREOFF,PROXYCON,STARTBEFOREONLY,SLEEPCON)
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-import time
+
 
 STARTBEFOREONLY = "TRUE"
 
@@ -80,11 +98,7 @@ ispassed=0
 failed=0
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # seconds
-from swiftshadow import QuickProxy
 
-
- # Output: https://<ip>:<port>
-import requests
 
 # Your API key (consider storing it securely)
 API_KEY = "z322kjc94sqjzejq7hlu2n4qbxyw5yhqqcpyo9s0"
@@ -429,7 +443,7 @@ while failed==0:
 
                                 ##bot1.send_message(chat_id=TELEGRAM_CHAT_ID1, text=statusmsg.text+" "+APPLNO+"\n"+CAREOFF)
                         except Exception as e:
-                            import traceback
+                            
 
                             traceback.print_exc()
                             try:
@@ -441,7 +455,7 @@ while failed==0:
                                         print(e)
                                         pass
     except Exception as e:
-        import traceback
+        
 
         traceback.print_exc()
         try:
@@ -455,19 +469,6 @@ while failed==0:
                     print(e)
                     pass
         #time.sleep(5)
-from PIL import Image
-import requests
-import time
-from bs4 import BeautifulSoup
-import telegram
-import os
-from datetime import date
-from PIL import Image
-import tempfile
-from anticaptchaofficial.imagecaptcha import *
-import requests
-from requests.exceptions import ConnectionError, Timeout
-import time
 
 TYPE = sys.argv[1]
 APPLNO = sys.argv[2]
@@ -778,7 +779,7 @@ while failed==0:
 
                                 ##bot1.send_message(chat_id=TELEGRAM_CHAT_ID1, text=statusmsg.text+" "+APPLNO+"\n"+CAREOFF)
                         except Exception as e:
-                            import traceback
+                            
 
                             traceback.print_exc()
                             try:
@@ -790,7 +791,7 @@ while failed==0:
                                         print(e)
                                         pass
     except Exception as e:
-        import traceback
+        
 
         traceback.print_exc()
         try:
