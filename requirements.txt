@@ -16,3 +16,4 @@ python-telegram-bot==20.3
 gunicorn==21.2.0
 werkzeug==2.3.7
 swiftshadow==0.1.0
+pyngrok

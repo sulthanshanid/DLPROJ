@@ -1,37 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <title>Superadmin Dashboard</title>
   </head>
   <body>
     <h1>Superadmin Dashboard</h1>
-    <form method="POST" action="{{ url_for('superadmin_dashboard') }}">
-      <label for="scheduling_time">Set Scheduling Time:</label>
-      <input
-        type="time"
-        id="scheduling_time"
-        name="scheduling_time"
-        value="{{ settings.scheduling_time }}"
-        required
-      />
-      <button type="submit">Update</button>
+
+    <form method="POST">
+      <label>Scheduling Time (HH:MM):</label>
+      <input type="time" name="scheduling_time" required />
+      <button type="submit">Update Time</button>
     </form>
 
-    <h2>Current Tasks</h2>
+    <h2>Scheduled Tasks</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>Task ID</th>
+          <th>Function</th>
+          <th>Next Run Time</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr>
+          <td>{{ task.job_id }}</td>
+          <td>{{ task.function }}</td>
+          <td>{{ task.next_run_time }}</td>
+          <td>
+            <form
+              action="{{ url_for('kill_taskk', task_id=task.job_id) }}"
+              method="post"
+            >
+              <button type="submit">Kill</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %}
     <ul>
-      {% for task in tasks %}
-      <li>
-        {{ task.job_id }} - Next run: {{ task.next_run_time }}
-        <form
-          method="POST"
-          action="{{ url_for('kill_taskk', task_id=task.job_id) }}"
-          
-          
-          >
-          <button type="submit">Kill Task</button>
-        </form>
+      {% for category, message in messages %}
+      <li style="color: {{ 'green' if category == 'success' else 'red' }}">
+        {{ message }}
       </li>
       {% endfor %}
     </ul>
+    {% endif %} {% endwith %}
   </body>
 </html>

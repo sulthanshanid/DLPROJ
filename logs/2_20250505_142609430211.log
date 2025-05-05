@@ -1,0 +1,50 @@
+2025-05-05 14:26:09,447 - INFO - Starting task ID 2 for application 1054881225
+2025-05-05 14:26:14,672 - INFO - 1054881225 18-06-1996 LMV 05-05-2025 NATIONAL NO TRUE 1
+2025-05-05 14:26:14,679 - INFO - 
+2025-05-05 14:26:14,679 - INFO - Time reached: Starting the code...
+2025-05-05 14:26:14,679 - INFO - 
+2025-05-05 14:26:14,680 - INFO - 
+2025-05-05 14:26:14,680 - INFO - Selected Proxy: {}
+2025-05-05 14:26:14,680 - INFO - {}
+2025-05-05 14:26:14,680 - INFO - start
+2025-05-05 14:26:15,695 - INFO - making request to createTask
+2025-05-05 14:26:18,693 - INFO - created task with id 806519282
+2025-05-05 14:26:19,703 - INFO - making request to getTaskResult
+2025-05-05 14:26:25,083 - INFO - task is still processing
+2025-05-05 14:26:26,094 - INFO - making request to getTaskResult
+2025-05-05 14:26:26,654 - INFO - task solved
+2025-05-05 14:26:26,654 - INFO - captcha text nOn41m
+2025-05-05 14:26:26,654 - INFO - nOn41m
+2025-05-05 14:26:27,940 - INFO - Captcha success
+2025-05-05 14:26:27,941 - INFO - CAPTCHA_USED:1
+2025-05-05 14:26:27,941 - INFO - Parsed captcha used: 1
+2025-05-05 14:26:39,164 - INFO - 
+2025-05-05 14:26:39,165 - INFO - Slots are allowed after 05-06-2025 only.
+2025-05-05 14:26:39,165 - INFO - 
+2025-05-05 14:26:39,165 - INFO - CAPTCHA_USED:1
+2025-05-05 14:26:39,165 - INFO - Parsed captcha used: 1
+2025-05-05 14:26:53,028 - INFO - 
+2025-05-05 14:26:53,028 - INFO - Slots are allowed after 05-06-2025 only.
+2025-05-05 14:26:53,028 - INFO - 
+2025-05-05 14:26:53,028 - INFO - CAPTCHA_USED:1
+2025-05-05 14:26:53,028 - INFO - Parsed captcha used: 1
+2025-05-05 14:27:09,365 - INFO - 
+2025-05-05 14:27:09,365 - INFO - Slots are allowed after 05-06-2025 only.
+2025-05-05 14:27:09,365 - INFO - 
+2025-05-05 14:27:09,365 - INFO - CAPTCHA_USED:1
+2025-05-05 14:27:09,365 - INFO - Parsed captcha used: 1
+2025-05-05 14:27:20,779 - INFO - 
+2025-05-05 14:27:20,780 - INFO - Slots are allowed after 05-06-2025 only.
+2025-05-05 14:27:20,780 - INFO - 
+2025-05-05 14:27:20,781 - INFO - CAPTCHA_USED:1
+2025-05-05 14:27:20,781 - INFO - Parsed captcha used: 1
+2025-05-05 14:27:39,164 - INFO - 
+2025-05-05 14:27:39,165 - INFO - Slots are allowed after 05-06-2025 only.
+2025-05-05 14:27:39,165 - INFO - 
+2025-05-05 14:27:39,165 - INFO - CAPTCHA_USED:1
+2025-05-05 14:27:39,165 - INFO - Parsed captcha used: 1
+2025-05-05 14:27:55,967 - INFO - 
+2025-05-05 14:27:55,967 - INFO - Slots are allowed after 05-06-2025 only.
+2025-05-05 14:27:55,967 - INFO - 
+2025-05-05 14:27:55,967 - INFO - CAPTCHA_USED:1
+2025-05-05 14:27:55,967 - INFO - Parsed captcha used: 1

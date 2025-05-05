@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>User Statistics</title>
+  </head>
+  <body>
+    <h1>Superadmin – User Statistics</h1>
+
+    <h2>Summary by User</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>User (careoff)</th>
+          <th>Total Tasks</th>
+          <th>Running</th>
+          <th>Failed</th>
+          <th>Wallet Balance</th>
+          <th>Update Wallet</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in stats %}
+        <tr>
+          <td>{{ user.careoff }}</td>
+          <td>{{ user.total_tasks }}</td>
+          <td>{{ user.running_tasks }}</td>
+          <td>{{ user.failed_tasks }}</td>
+          <td>₹{{ user.wallet_balance }}</td>
+          <td>
+            <form
+              method="post"
+              action="{{ url_for('update_wallet', careoff=user.careoff) }}"
+            >
+              <input
+                type="number"
+                name="new_balance"
+                value="{{ user.wallet_balance }}"
+                required
+              />
+              <button type="submit">Update</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Running Tasks Grouped by User</h2>
+    {% for careoff, tasks in user_tasks.items() %}
+    <h3>{{ careoff }}</h3>
+    <ul>
+      {% for task in tasks %}
+      <li>
+        ID: {{ task.id }} – {{ task.status }}
+        <form
+          method="post"
+          action="{{ url_for('kill_taskk', task_id=task.id) }}"
+          style="display: inline"
+        >
+          <button type="submit">Kill</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+
+    <h2>Add New User</h2>
+    <form method="post" action="{{ url_for('add_user') }}">
+      <label for="username">Username:</label>
+      <input type="text" name="username" required /><br /><br />
+      <label for="password">Password:</label>
+      <input type="password" name="password" required /><br /><br />
+      <label for="wallet_balance">Wallet Balance:</label>
+      <input
+        type="number"
+        name="wallet_balance"
+        value="0"
+        required
+      /><br /><br />
+      <button type="submit">Add User</button>
+    </form>
+  </body>
+</html>

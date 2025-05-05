@@ -7,6 +7,8 @@ from flask_login import login_required, current_user
 import threading
 import os
 import json
+from pyngrok import ngrok
+ngrok.set_auth_token("2wfpiN1qtzcfqeX87UaTqXyhAWJ_3AUsK1K7dTcBrWV6XFdGR")
 import pytz
 from flask import flash
 import requests
@@ -50,6 +52,18 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import os
 from flask import Flask, send_from_directory, abort
+from functools import wraps
+from flask import session, abort
+
+def superadmin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('username') != 'admin':  # Or check session.get('is_superadmin')
+            abort(403)  # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
+
+from flask import session
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -58,7 +72,12 @@ app.secret_key = 'supersecretkey'
 db = SQLAlchemy(app)
 scheduler = BackgroundScheduler()
 scheduler.start()
-
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)  # Consider hashing passwords
+    walletamount = db.Column(db.Float, default=0.0)
+    captchaused = db.Column(db.Integer, default=0)
 class ScheduledTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     applications = db.Column(db.Text, nullable=False)
@@ -71,6 +90,8 @@ class ScheduledTask(db.Model):
     slotdate = db.Column(db.String(10), nullable=False)
     careoff= db.Column(db.String(10), nullable=False)
     proxy = db.Column(db.String(10), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    extra = db.Column(db.String(255), nullable=True) 
 class SchedulingSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     scheduling_time = db.Column(db.Time, nullable=False, default="08:55:00")
@@ -81,6 +102,24 @@ with app.app_context():
 
 global active_processes
 active_processes = {}
+@app.route('/createuserr', methods=['GET'])
+def create_admin_user():
+    # Check if the admin user already exists
+    admin_user = User.query.filter_by(username='admin').first()
+
+    if admin_user:
+        return jsonify({"message": "Admin user already exists!"}), 400
+
+    # Create a hardcoded admin user
+    # hardcoded password
+    admin_user = User(username='admin', password="admin")
+
+    # Add the user to the session and commit
+    db.session.add(admin_user)
+    db.session.commit()
+
+    return jsonify({"message": "Admin user created successfully!"}), 201
+
 @app.route('/')
 def index():
     if 'logged_in' not in d:
@@ -92,20 +131,31 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        if username == 'admin' and password == 'password':
-            d['logged_in'] = True
-            d['username'] = "admin"
+
+        user = User.query.filter_by(username=username, password=password).first()
+        if user:
+            session['logged_in'] = True
+            session['username'] = user.username
             return redirect(url_for('dashboard'))
         else:
             return "Invalid login credentials", 403
+
     return render_template('login.html')
 
 @app.route('/dashboard')
 def dashboard():
-    if 'logged_in' not in d :
-        return redirect(url_for('login'))
-    username = d['username']
-    return render_template('dashboard.html', username=username)
+    if 'logged_in' in session:
+        username = session['username']
+        user = User.query.filter_by(username=username).first()
+        if user:
+            return render_template(
+                'dashboard.html',
+                username=user.username,
+                walletamount=user.walletamount,
+                captchaused=user.captchaused
+            )
+    return redirect(url_for('login'))
+
 
 @app.route('/fetch_task_data', methods=['POST'])
 def fetch_task_data():
@@ -113,11 +163,13 @@ def fetch_task_data():
                         data = request.json
                         print(data)
                         response_data = []
+                        total_captcha_attempts = 0 
                         for task in data:
                             ispassed=0
                             applicationid = task['applno']
                             dobfinal = task['dob']
                             while ispassed==0:
+                               total_captcha_attempts += 1
                                t=requests.Session()
                                rewww01_url = "https://sarathi.parivahan.gov.in/sarathiservice/jsp/common/captchaimage.jsp"
                                rewww01_header = {"Referer": "https://sarathi.parivahan.gov.in/slots/dlslotbook.do",
@@ -172,8 +224,22 @@ def fetch_task_data():
                                 table = soup.find_all('table', class_="table table-bordered table-hover")[0]
 
                             except Exception as e:
-                                error_message = soup.select_one('.errorMessage li span').text.strip()
-                                print('Error Message Cov:', e,error_message)
+                                try:
+                                  error_message = soup.select_one('.errorMessage li span').text.strip()
+                                  print('Error Message Cov:', e,error_message)
+                                  username = session.get('username')
+                                  user = User.query.filter_by(username=username).first()
+                                  if user:
+                                            user.captchaused += total_captcha_attempts
+                                            db.session.commit()
+                                  
+                                except Exception as e:
+                                    username = session.get('username')
+                                    user = User.query.filter_by(username=username).first()
+                                    if user:
+                                            user.captchaused += total_captcha_attempts
+                                            db.session.commit()
+
                                 
                                 
 
@@ -207,6 +273,11 @@ def fetch_task_data():
                                     except  Exception as e:
                                         error_message = soup.select_one('.errorMessage li span').text.strip()
                                         print('Error Message:', error_message)
+                                        username = session.get('username')
+                                        user = User.query.filter_by(username=username).first()
+                                        if user:
+                                            user.captchaused += total_captcha_attempts
+                                            db.session.commit()
                                         
 
 
@@ -218,6 +289,11 @@ def fetch_task_data():
                                 except Exception as e:
                                     applicationid=oldapplicationid
                                     response_data.append({"applno": applicationid, "name": name, "cov": vauleofcov})
+                                    username = session.get('username')
+                                    user = User.query.filter_by(username=username).first()
+                                    if user:
+                                        user.captchaused += total_captcha_attempts
+                                        db.session.commit()
                                     continue
                                 df = pd.read_html(str(table).upper())
                                 #print(df)
@@ -250,9 +326,19 @@ def fetch_task_data():
 
                                 traceback.print_exc()
                                 response_data.append({"applno": applicationid, "error": error_message})
+                                username = session.get('username')
+                                user = User.query.filter_by(username=username).first()
+                                if user:
+                                    user.captchaused += total_captcha_attempts
+                                    db.session.commit()
                                 pass
                             applicationid=oldapplicationid
                             response_data.append({"applno": applicationid, "name": name, "cov": vauleofcov})
+                            username = session.get('username')
+                            user = User.query.filter_by(username=username).first()
+                            if user:
+                                user.captchaused += total_captcha_attempts
+                                db.session.commit()
                         return jsonify(response_data)
                             
 
@@ -263,15 +349,29 @@ from datetime import datetime, timedelta, time
 scheduler = BackgroundScheduler()
 scheduler.start()
 
-@app.route('/schedule', methods=['POST'])
+
+
+@app.route('/schedule', methods=['POST']) 
 def schedule_task():
+    if 'username' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+
     data = request.json
     tasks = data.get('tasks')
-    settings = SchedulingSettings.query.first()
-
     if not tasks:
-        return jsonify({'error': 'No tasks provided'}), 400
+        return jsonify({'message': 'No tasks provided'}), 400
 
+    task_count = len(tasks)
+
+    # Fetch user and check wallet
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+
+    if user.walletamount < task_count:
+        return jsonify({'message': 'Insufficient wallet balance to schedule tasks'}), 403
+
+    # Time calculations
     india = pytz.timezone("Asia/Kolkata")
     now = datetime.now(india)
     today_9am = india.localize(datetime.combine(now.date(), time(9, 0)))
@@ -279,11 +379,11 @@ def schedule_task():
 
     # Determine run time
     if now < today_9am:
-        # Add 30-second buffer to ensure task gets scheduled properly
         run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
     else:
         run_time = tomorrow_6am.astimezone(pytz.utc)
 
+    # Schedule tasks
     for task in tasks:
         new_task = ScheduledTask(
             applications=task['applno'],
@@ -292,12 +392,77 @@ def schedule_task():
             scheduled_date=now.strftime("%Y-%m-%d"),
             status="Pending",
             slotdate=datetime.strptime(task['slotdate'], "%Y-%m-%d").strftime("%d-%m-%Y"),
-            careoff=task['careoff'],
-            proxy=task['proxy']
+            careoff=user.username,
+            proxy=task['proxy'],
+            name=task['name']
         )
         db.session.add(new_task)
-        db.session.commit()
+        db.session.flush()  # get ID before commit
+
         scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id])
+
+    # Deduct wallet only after successful scheduling
+    user.walletamount -= task_count
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Tasks scheduled successfully',
+        'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
+    }), 201
+@app.route('/schedule1', methods=['POST']) 
+def schedule_task1():
+    if 'username' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    data = request.json
+    tasks = data.get('tasks')
+    if not tasks:
+        return jsonify({'message': 'No tasks provided'}), 400
+
+    task_count = len(tasks)
+
+    # Fetch user and check wallet
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+
+    if user.walletamount < task_count:
+        return jsonify({'message': 'Insufficient wallet balance to schedule tasks'}), 403
+
+    # Time calculations
+    india = pytz.timezone("Asia/Kolkata")
+    now = datetime.now(india)
+    today_9am = india.localize(datetime.combine(now.date(), time(9, 0)))
+    tomorrow_6am = india.localize(datetime.combine(now.date() + timedelta(days=1), time(6, 0)))
+
+    # Determine run time
+    if now < today_9am:
+        run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
+    else:
+        run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
+
+    # Schedule tasks
+    for task in tasks:
+        new_task = ScheduledTask(
+            applications=task['applno'],
+            dob=datetime.strptime(task['dob'], "%d-%m-%Y").strftime("%d-%m-%Y"),
+            cov=str(task['cov']).replace(" ", ""),
+            scheduled_date=now.strftime("%Y-%m-%d"),
+            status="Pending",
+            slotdate=datetime.strptime(task['slotdate'], "%Y-%m-%d").strftime("%d-%m-%Y"),
+            careoff=user.username,
+            proxy=task['proxy'],
+            name=task['name'],
+            extra=datetime.strptime(task['slotdate1'], "%Y-%m-%d").strftime("%d-%m-%Y")
+        )
+        db.session.add(new_task)
+        db.session.flush()  # get ID before commit
+
+        scheduler.add_job(run_game_script1, 'date', run_date=run_time, args=[new_task.id])
+
+    # Deduct wallet only after successful scheduling
+    user.walletamount -= task_count
+    db.session.commit()
 
     return jsonify({
         'message': 'Tasks scheduled successfully',
@@ -305,12 +470,6 @@ def schedule_task():
     }), 201
 
 
-
-
-# Ensure the 'logs' directory exists
-os.makedirs('logs', exist_ok=True)
-
-os.makedirs('logs', exist_ok=True)
 
 
 # Ensure the 'logs' directory exists
@@ -333,50 +492,134 @@ def run_game_script(task_id):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
     log_file = f'logs/{task_id}_{timestamp}.log'
 
-    # Set up logger
     logger = logging.getLogger(f'task_{task_id}')
     logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(file_handler)
 
+    captcha_used = 0
+
     with app.app_context():
         task = ScheduledTask.query.get(task_id)
-        if task:
-            task.status = "Running"
+        if not task:
+            logger.error(f"Task ID {task_id} not found.")
+            return
+
+        task.status = "Running"
+        task.log_file = log_file
+        retry_commit(db.session)
+
+        logger.info(f"Starting task ID {task_id} for application {task.applications}")
+
+        command = ["python", "-u", "game.py", task.applications, task.cov, task.dob, task.slotdate, task.careoff, task.proxy ]
+        try:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            active_processes[task_id] = process
+
+            for line in iter(process.stdout.readline, ''):
+                logger.info(line.strip())
+
+                # Capture "CAPTCHA_USED:" lines
+                if "CAPTCHA_USED:" in line:
+                    try:
+                        captcha_used = int(line.strip().split("CAPTCHA_USED:")[1])
+                        logger.info(f"Parsed captcha used: {captcha_used}")
+                    except Exception as e:
+                        logger.warning(f"Failed to parse captcha used: {e}")
+
+            process.wait()
+
+            user = User.query.filter_by(username=task.username).first()  # Ensure task.username is available
+
+            if process.returncode == 0:
+                task.status = "Completed"
+            else:
+                task.status = "Failed"
+                for error_line in iter(process.stderr.readline, ''):
+                    logger.error(error_line.strip())
+
+                if user:
+                    user.walletamount += 1  # refund
+
+        except FileNotFoundError:
+            task.status = "Failed"
+            logger.error("game.py not found")
+
+        finally:
+            if captcha_used > 0 and user:
+                user.captchaused += captcha_used
+
             task.log_file = log_file
             retry_commit(db.session)
+            logger.info(f"Task ID {task_id} status updated to {task.status}")
+            logger.handlers.clear()
+def run_game_script1(task_id):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
+    log_file = f'logs/{task_id}_{timestamp}.log'
 
-            logger.info(f"Starting task ID {task_id} for application {task.applications}")
+    logger = logging.getLogger(f'task_{task_id}')
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger.addHandler(file_handler)
 
-            command = ["python", "-u", "game.py",  task.applications, task.cov,task.dob, task.slotdate, task.careoff, task.proxy]
-            try:
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                active_processes[task_id] = process
+    captcha_used = 0
 
-                for line in iter(process.stdout.readline, ''):
-                    logger.info(line.strip())
+    with app.app_context():
+        task = ScheduledTask.query.get(task_id)
+        if not task:
+            logger.error(f"Task ID {task_id} not found.")
+            return
 
-                process.wait()
+        task.status = "Running"
+        task.log_file = log_file
+        retry_commit(db.session)
 
-                if process.returncode == 0:
-                    task.status = "Completed"
-                else:
-                    task.status = "Failed"
-                    for error_line in iter(process.stderr.readline, ''):
-                        logger.error(error_line.strip())
+        logger.info(f"Starting task ID {task_id} for application {task.applications}")
 
-            except FileNotFoundError:
+        command = ["python", "-u", "c.py", task.applications, task.dob,task.cov ,task.slotdate,task.extra]
+        try:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            active_processes[task_id] = process
+
+            for line in iter(process.stdout.readline, ''):
+                logger.info(line.strip())
+
+                # Capture "CAPTCHA_USED:" lines
+                if "CAPTCHA_USED:" in line:
+                    try:
+                        captcha_used = int(line.strip().split("CAPTCHA_USED:")[1])
+                        logger.info(f"Parsed captcha used: {captcha_used}")
+                    except Exception as e:
+                        logger.warning(f"Failed to parse captcha used: {e}")
+
+            process.wait()
+
+            user = User.query.filter_by(username=task.careoff).first()  # Ensure task.username is available
+
+            if process.returncode == 0:
+                task.status = "Completed"
+            else:
                 task.status = "Failed"
-                logger.error("game.py not found")
+                for error_line in iter(process.stderr.readline, ''):
+                    logger.error(error_line.strip())
 
-            finally:
-                task.log_file = log_file
-                retry_commit(db.session)
-                logger.info(f"Task ID {task_id} status updated to {task.status}")
+                if user:
+                    user.walletamount += 1  # refund
 
-                # Clean up logger
-                logger.handlers.clear()
+        except FileNotFoundError:
+            task.status = "Failed"
+            logger.error("c.py not found")
+
+        finally:
+            if captcha_used > 0 and user:
+                user.captchaused += captcha_used
+
+            task.log_file = log_file
+            retry_commit(db.session)
+            logger.info(f"Task ID {task_id} status updated to {task.status}")
+            logger.handlers.clear()
 
 @app.route('/fetch_slot_checkdate', methods=['POST'])
 
@@ -451,12 +694,20 @@ def fetch_slot_checkdate():
         # If the filtered DataFrame is empty, prompt the user to enter a date
         SLOTDATE = "" 
     return jsonify({"slotdate": SLOTDATE})
+from flask import g
+
 @app.route('/live_status/<int:task_id>')
 def live_status(task_id):
     task = ScheduledTask.query.get(task_id)
+    
+    # Ensure task exists
     if not task or not task.log_file:
         return jsonify({'error': 'Task or log file not found'}), 404
-     
+
+    # AUTHORIZATION: check if the logged-in user is the task's careoff
+    
+
+    # Stream logs if user owns the task
     def stream_logs():
         with open(task.log_file, 'r') as log_file:
             while True:
@@ -466,6 +717,8 @@ def live_status(task_id):
                 yield f"{line.strip()}\n"
 
     return app.response_class(stream_logs(), mimetype='text/plain')
+
+
 @app.route('/add_task')
 def add_task():
     # Query all scheduled tasks from the database
@@ -473,38 +726,64 @@ def add_task():
     
     # Return tasks in a simple HTML table view
     return render_template('addtask.html')
+@app.route('/add_task_check')
+def add_task1():
+    # Query all scheduled tasks from the database
+    
+    
+    # Return tasks in a simple HTML table view
+    return render_template('addtaskcheck.html')
+from flask import session, redirect, url_for
+
 @app.route('/view_tasks')
 def view_tasks():
-    # Query all scheduled tasks from the database
-    tasks = ScheduledTask.query.all()
+    if 'username' not in session:
+        return redirect(url_for('login'))  # redirect to login if not logged in
+
+    username = session['username']
+
+    # Only get tasks for this user
+    tasks = ScheduledTask.query.filter_by(careoff=username).all()
     careoffs = sorted(set(task.careoff for task in tasks))
+
     return render_template("view_tasks.html", tasks=tasks, careoffs=careoffs)
 
     # Return tasks in a simple HTML table view
     
-@app.route('/kill_task/<int:task_id>', methods=['GET'])  # Changed to POST for better semantics
+from flask import session, abort
+
+@app.route('/kill_task/<int:task_id>', methods=['GET'])  # Use POST for better semantics
 def kill_task(task_id):
-    
+    if 'username' not in session:
+        abort(401)  # Unauthorized
+
+    task = ScheduledTask.query.get(task_id)
+
+    if not task:
+        return jsonify({'error': f'Task ID {task_id} not found'}), 404
+
+    if task.careoff != session['username']:
+        abort(403)  # Forbidden
+
     process = active_processes.get(task_id)
 
     if not process:
         return jsonify({'error': f'No running process found for task ID {task_id}'}), 404
 
     try:
-        # Terminate the process gracefully
+        # Try to gracefully terminate the process
         process.terminate()
-        process.wait(timeout=5)  # Allow time for graceful termination
+        process.wait(timeout=5)
     except subprocess.TimeoutExpired:
-        # Force kill if it doesn't terminate gracefully
         process.kill()
-        return jsonify({'message': f'Task ID {task_id} forcefully terminated'}), 503  # Use 503 for service unavailable
+        return jsonify({'message': f'Task ID {task_id} forcefully terminated'}), 503
     except Exception as e:
         return jsonify({'error': f'Failed to terminate task ID {task_id}: {str(e)}'}), 500
     finally:
-        # Remove the task from the active processes dictionary
         active_processes.pop(task_id, None)
 
     return jsonify({'message': f'Task ID {task_id} terminated successfully'}), 200
+
 
 
 @app.route('/pdf/<applno>')
@@ -521,109 +800,12 @@ def send_pdf(applno):
     
     # Serve the file
     return send_from_directory(pdf_directory, pdf_file, as_attachment=True)
-@app.route('/superadmin/dashboard', methods=['GET', 'POST'])  # Assuming superadmin has a login system
-def superadmin_dashboard():
-    # Fetch the first scheduling settings entry
-    settings = SchedulingSettings.query.first()
-    
-    if not settings:
-        # Default scheduling time
-        scheduling_time = datetime.strptime("08:55:00", "%H:%M:%S").time()
-        settings = SchedulingSettings(scheduling_time=scheduling_time)
-        db.session.add(settings)
-        db.session.commit()
 
-    if request.method == 'POST':
-        new_time = request.form.get('scheduling_time')
-        if new_time:
-            try:
-                # Convert input to time object and update settings
-                new_time_obj = datetime.strptime(new_time, "%H:%M").time()
-                settings.scheduling_time = new_time_obj
-                db.session.commit()
-                flash("Scheduling time updated successfully!", "success")
-            except ValueError:
-                flash("Invalid time format. Please use HH:MM.", "danger")
-        else:
-            flash("No time provided. Please enter a valid time.", "warning")
-
-    # For both GET and POST, fetch tasks and render the dashboard
-    tasks = scheduler.get_jobs()
-    schedules = []
-
-# Get jobs from the scheduler
-    jobs = scheduler.get_jobs()
-    if not jobs:
-      print("No jobs found!")
-    else:
-       for job in jobs:
-        jobdict = {
-            "job_id": job.id,
-            "function": job.func_ref,
-            "next_run_time": job.next_run_time
-            
-        }
-        # Safely extract fields
-        try:
-            for field in job.trigger.fields:
-                jobdict[field.name] = str(field)
-        except AttributeError:
-            print(f"Job {job.id} has no trigger fields.")
-
-        schedules.append(jobdict)
-
-    for schedule in schedules:
-     print(schedule) 
-
-
-
-# Pass tasks to the template
-    return render_template('superadmin_dashboard.html', settings=settings,tasks=schedules)
-
-
-@app.route('/superadmin/kill_task/<task_id>', methods=['POST'])
-def kill_taskk(task_id):
-    
-
-    try:
-        scheduler.remove_job(task_id)
-        flash(f'Task {task_id} has been killed!', 'success')
-    except Exception as e:
-        flash(f'Error killing task {task_id}: {str(e)}', 'danger')
-
-    return redirect(url_for('superadmin_dashboard'))
-from werkzeug.utils import secure_filename
-UPLOAD_FOLDER = 'uploads'  # Folder to store uploaded images
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}  # Allowed file extensions
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Ensure the upload folder exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@app.route('/upload', methods=['POST'])
-def upload_images():
-    if 'files[]' not in request.files:
-        return jsonify({'error': 'No files part in the request'}), 400
-
-    files = request.files.getlist('files[]')
-    paths = []
-
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            paths.append(filepath)
-        else:
-            return jsonify({'error': f"File '{file.filename}' is not allowed"}), 400
-
-    return jsonify({'paths': paths})
 
 @app.route('/imgtoappl', methods=['POST'])
 def img_to_appl():
+    if 'username' not in session:
+        abort(401)  # Unauthorized
     # This is a mock implementation. Replace it with your actual logic.
     # The request should include paths to the images for processing.
     data = request.get_json()
@@ -772,9 +954,119 @@ def img_to_appl():
                 continue
     results = list(results)  # Convert set to list
     return jsonify({'data': results})
+@app.route('/upload', methods=['POST'])
+def upload_images():
+    if 'username' not in session:
+        abort(401)  # Unauthorized
+
+    if 'files[]' not in request.files:
+        return jsonify({'error': 'No files part in the request'}), 400
+
+    files = request.files.getlist('files[]')
+    paths = []
+
+    for file in files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            paths.append(filepath)
+        else:
+            return jsonify({'error': f"File '{file.filename}' is not allowed"}), 400
+
+    return jsonify({'paths': paths})
+
 from flask import send_file
+@app.route('/superadmin/dashboard', methods=['GET', 'POST'])
+@superadmin_required
+  # Assuming superadmin has a login system
+def superadmin_dashboard():
+    # Fetch the first scheduling settings entry
+    settings = SchedulingSettings.query.first()
+    
+    if not settings:
+        # Default scheduling time
+        scheduling_time = datetime.strptime("08:55:00", "%H:%M:%S").time()
+        settings = SchedulingSettings(scheduling_time=scheduling_time)
+        db.session.add(settings)
+        db.session.commit()
+
+    if request.method == 'POST':
+        new_time = request.form.get('scheduling_time')
+        if new_time:
+            try:
+                # Convert input to time object and update settings
+                new_time_obj = datetime.strptime(new_time, "%H:%M").time()
+                settings.scheduling_time = new_time_obj
+                db.session.commit()
+                flash("Scheduling time updated successfully!", "success")
+            except ValueError:
+                flash("Invalid time format. Please use HH:MM.", "danger")
+        else:
+            flash("No time provided. Please enter a valid time.", "warning")
+
+    # For both GET and POST, fetch tasks and render the dashboard
+    tasks = scheduler.get_jobs()
+    schedules = []
+
+# Get jobs from the scheduler
+    jobs = scheduler.get_jobs()
+    if not jobs:
+      print("No jobs found!")
+    else:
+       for job in jobs:
+        jobdict = {
+            "job_id": job.id,
+            "function": job.func_ref,
+            "next_run_time": job.next_run_time
+            
+        }
+        # Safely extract fields
+        try:
+            for field in job.trigger.fields:
+                jobdict[field.name] = str(field)
+        except AttributeError:
+            print(f"Job {job.id} has no trigger fields.")
+
+        schedules.append(jobdict)
+
+    for schedule in schedules:
+     print(schedule) 
+
+
+
+# Pass tasks to the template
+    return render_template('superadmin_dashboard.html', settings=settings,tasks=schedules)
+
+
+@app.route('/superadmin/kill_task/<task_id>', methods=['POST'])
+def kill_taskk(task_id):
+    
+
+    try:
+        scheduler.remove_job(task_id)
+
+        flash(f'Task {task_id} has been killed!', 'success')
+    except Exception as e:
+        flash(f'Error killing task {task_id}: {str(e)}', 'danger')
+
+    return redirect(url_for('superadmin_dashboard'))
+from werkzeug.utils import secure_filename
+UPLOAD_FOLDER = 'uploads'  # Folder to store uploaded images
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}  # Allowed file extensions
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure the upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+from flask import session, abort
+
 
 @app.route('/pdfs/<careoff>')
+@superadmin_required
 def zip_pdfs_by_careoff(careoff):
     import datetime
     import io
@@ -813,11 +1105,130 @@ def zip_pdfs_by_careoff(careoff):
         as_attachment=True
     )
 
-@app.route('/webhook', methods=['GET'])
-def webhook():
-    data = request.json
-    if data and 'ref' in data:  # Ensure it's a push event
-        os.system('cd /home/test/DLWEB && git pull origin main ')
-    return 'Updated', 200
+from flask import request, redirect, url_for, flash
+
+from flask import request, redirect, url_for, flash
+from werkzeug.security import generate_password_hash  # for password hashing
+
+@app.route('/superadmin/user_stats', methods=['GET', 'POST'])
+@superadmin_required
+def user_stats():
+    # If it's a POST request, handle wallet balance update
+    if request.method == 'POST' and 'new_balance' in request.form:
+        careoff = request.form.get('careoff')
+        new_balance = request.form.get('new_balance')
+        user = User.query.filter_by(username=careoff).first()
+        if user:
+            user.walletbalance = float(new_balance)  # update the wallet balance
+            db.session.commit()  # commit the changes to the database
+            flash(f"Wallet balance for {careoff} updated to ₹{new_balance}", 'success')
+        else:
+            flash(f"User {careoff} not found", 'danger')
+        return redirect(url_for('user_stats'))
+
+    # Get all users, including those with no tasks
+    users = User.query.all()
+
+    stats = []
+    for user in users:
+        total = ScheduledTask.query.filter_by(careoff=user.username).count()
+        failed = ScheduledTask.query.filter_by(careoff=user.username, status='failed').count()
+        running = ScheduledTask.query.filter_by(careoff=user.username, status='running').count()
+        wallet = user.walletamount
+
+        stats.append({
+            'careoff': user.username,
+            'total_tasks': total,
+            'failed_tasks': failed,
+            'running_tasks': running,
+            'wallet_balance': wallet
+        })
+
+    # Group running tasks by user (careoff)
+    tasks = ScheduledTask.query.all()
+    user_tasks = {}
+    for task in tasks:
+        if task.status == 'running':  # assuming task has a status field
+            user_tasks.setdefault(task.careoff, []).append(task)
+
+    return render_template('superadmin_user_stats.html', user_tasks=user_tasks, stats=stats)
+
+
+@app.route('/superadmin/add_user', methods=['POST'])
+@superadmin_required
+def add_user():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    wallet_balance = float(request.form.get('wallet_balance'))
+
+    # Check if the user already exists
+    if User.query.filter_by(username=username).first():
+        flash("User already exists", 'danger')
+        return redirect(url_for('user_stats'))
+
+    # Hash password before storing
+    
+
+    # Create a new user
+    new_user = User(username=username, password=password)
+    new_user.walletamount = wallet_balance
+    db.session.add(new_user)
+    db.session.commit()
+
+    flash(f"New user {username} added successfully", 'success')
+    return redirect(url_for('user_stats'))
+
+
+@app.route('/superadmin/update_wallet/<careoff>', methods=['POST'])
+@superadmin_required
+def update_wallet(careoff):
+    new_balance = request.form.get('new_balance')
+    print(f"Attempting to update wallet balance for user: {careoff} with new balance: {new_balance}")
+
+    # Ensure the new_balance is a valid number (float)
+    try:
+        new_balance = float(new_balance)  # Convert the new_balance to a float
+    except ValueError:
+        flash(f"Invalid balance value provided for {careoff}.", 'danger')
+        return redirect(url_for('user_stats'))
+
+    # Find the user by username (careoff)
+    user = User.query.filter_by(username=careoff).first()
+    
+    if user:
+        print(f"Found user {careoff}, current wallet balance: {user.walletamount}")
+        
+        # Update the wallet balance directly in the User model
+        user.walletamount = new_balance
+        try:
+            db.session.commit()  # Commit the changes to the database
+            print(f"Wallet balance for {careoff} updated to ₹{new_balance}")
+            flash(f"Wallet balance for {careoff} updated to ₹{new_balance}", 'success')
+        except Exception as e:
+            db.session.rollback()  # Rollback in case of any errors
+            print(f"Error while committing the transaction: {e}")
+            flash(f"Error updating wallet balance for {careoff}. Please try again.", 'danger')
+    else:
+        print(f"User {careoff} not found")
+        flash(f"User {careoff} not found", 'danger')
+    
+    # After commit, check the updated wallet balance and print
+    updated_user = User.query.filter_by(username=careoff).first()
+    print(f"Updated wallet balance for {careoff}: {updated_user.walletamount}")
+
+    return redirect(url_for('user_stats'))
+
+PORT = 5000
+from flask_login import logout_user, login_required
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()  # Logs out the current user
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('login')) 
+# Start Ngrok with a custom subdomain
+#public_url = ngrok.connect(PORT, "http", url="workable-completely-panther.ngrok-free.app")
+#print(f" * Ngrok tunnel \"{public_url}\" -> http://127.0.0.1:{PORT}")
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -98,7 +98,7 @@ ispassed=0
 failed=0
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # seconds
-
+captchaused=0
 
 # Your API key (consider storing it securely)
 API_KEY = "z322kjc94sqjzejq7hlu2n4qbxyw5yhqqcpyo9s0"
@@ -224,6 +224,7 @@ while failed==0:
             solver.set_soft_id(0)
             solver.set_case("true")
             captchaa = solver.solve_and_return_solution(image_path)
+            captchaused+=1
             if captchaa != 0:
                 print("captcha text " + captchaa)
             else:
@@ -248,6 +249,7 @@ while failed==0:
                 os.remove(temp_img_path)
                 break
         while True:
+            print(f"CAPTCHA_USED:{captchaused}")
             rewww02_url = "https://sarathi.parivahan.gov.in:443/slots/dldetsubmit.do"
             rewww02_headers = {"Content-Type": "application/x-www-form-urlencoded",
                                "Referer": "https://sarathi.parivahan.gov.in/slots/dlslotbook.do"}

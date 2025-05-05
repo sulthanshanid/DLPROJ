@@ -1,0 +1,6 @@
+2025-05-05 15:54:58,566 - INFO - Starting task ID 4 for application 547656925
+2025-05-05 15:55:00,733 - ERROR - Traceback (most recent call last):
+2025-05-05 15:55:00,733 - ERROR - File "C:\Users\User\Downloads\DLPROJ\c.py", line 26, in <module>
+2025-05-05 15:55:00,733 - ERROR - MINDATE = sys.argv[5]
+2025-05-05 15:55:00,733 - ERROR - IndexError: list index out of range
+2025-05-05 15:55:00,746 - INFO - Task ID 4 status updated to Failed

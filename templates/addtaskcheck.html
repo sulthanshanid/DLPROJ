@@ -117,10 +117,9 @@
   </head>
   <body>
     <header>
-      
       <h2>Dashboard</h2>
       <a href="{{ url_for('logout') }}" style="color: white">Logout</a>
-      <a href="#" style="color: white">Logout</a>
+      
     </header>
 
     <div class="container">
@@ -151,8 +150,10 @@
       <button onclick="fetchAllData()">Fetch All</button>
 
       <h3>Slot Date</h3>
-      <label for="slotdate">Enter Slot Date: </label>
+      <label for="slotdate">Enter maximum Slot Date: </label>
       <input type="date" id="slotdate" name="slotdate" />
+      <label for="slotdate1">Enter minimum Slot Date: </label>
+      <input type="date" id="slotdate1" name="slotdate1" />
       <button onclick="fetchSlotDate()">Fetch Date</button>
 
       <h3>Add Task</h3>
@@ -289,6 +290,8 @@
       function submitTasks() {
         const tasks = [];
         const slotdate = document.getElementById("slotdate").value;
+        const slotdate1 = document.getElementById("slotdate1").value;
+
         for (let i = 1; i <= rowIndex; i++) {
           const applno = document.getElementById(`applno_${i}`).value;
           const dob = formatDate(document.getElementById(`dob_${i}`).value);
@@ -302,13 +305,15 @@
               name,
               cov,
               slotdate,
+              slotdate1,
+
 
               proxy: document.getElementById("proxy").value,
             });
           }
         }
 
-        fetch("/schedule", {
+        fetch("/schedule1", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tasks }),
