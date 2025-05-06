@@ -112,7 +112,7 @@ def create_admin_user():
 
     # Create a hardcoded admin user
     # hardcoded password
-    admin_user = User(username='admin', password="admin")
+    admin_user = User(username='admin', password="Sahad")
 
     # Add the user to the session and commit
     db.session.add(admin_user)
