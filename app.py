@@ -108,17 +108,18 @@ def create_admin_user():
     admin_user = User.query.filter_by(username='admin').first()
 
     if admin_user:
-        return jsonify({"message": "Admin user already exists!"}), 400
+        # Update the password if user exists
+        admin_user.password = "Sahad"
+        db.session.commit()
+        return jsonify({"message": "Admin user password updated!"}), 200
 
-    # Create a hardcoded admin user
-    # hardcoded password
+    # Create a new admin user
     admin_user = User(username='admin', password="Sahad")
-
-    # Add the user to the session and commit
     db.session.add(admin_user)
     db.session.commit()
 
     return jsonify({"message": "Admin user created successfully!"}), 201
+
 
 @app.route('/')
 def index():
