@@ -383,6 +383,7 @@ def schedule_task():
         run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
     else:
         run_time = tomorrow_6am.astimezone(pytz.utc)
+        #run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
 
     # Schedule tasks
     for task in tasks:
@@ -489,6 +490,14 @@ def retry_commit(session, retries=5, delay=1):
                 raise  # Re-raise other database errors
     raise sqlite3.OperationalError("Failed to commit to the database after multiple retries.")
 
+import subprocess
+import logging
+from datetime import datetime
+
+
+
+
+
 def run_game_script(task_id):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
     log_file = f'logs/{task_id}_{timestamp}.log'
@@ -500,6 +509,7 @@ def run_game_script(task_id):
     logger.addHandler(file_handler)
 
     captcha_used = 0
+    user = None
 
     with app.app_context():
         task = ScheduledTask.query.get(task_id)
@@ -513,35 +523,48 @@ def run_game_script(task_id):
 
         logger.info(f"Starting task ID {task_id} for application {task.applications}")
 
-        command = ["python", "-u", "game.py", task.applications, task.cov, task.dob, task.slotdate, task.careoff, task.proxy ]
+        command = [
+            "python", "-u", "game.py",
+            task.applications, task.cov, task.dob, task.slotdate, task.careoff, task.proxy
+        ]
+
         try:
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             active_processes[task_id] = process
 
-            for line in iter(process.stdout.readline, ''):
+            stdout_lines = []
+            stderr_lines = []
+
+            # Read stdout live
+            while True:
+                line = process.stdout.readline()
+                if line:
+                    stdout_lines.append(line)
+                    logger.info(line.strip())
+                    if "CAPTCHA_USED:" in line:
+                        try:
+                            captcha_used = int(line.strip().split("CAPTCHA_USED:")[1])
+                        except Exception as e:
+                            logger.warning(f"Failed to parse captcha used: {e}")
+                elif process.poll() is not None:
+                    break
+
+            # Ensure all remaining output is read
+            for line in process.stdout.read().splitlines():
                 logger.info(line.strip())
 
-                # Capture "CAPTCHA_USED:" lines
-                if "CAPTCHA_USED:" in line:
-                    try:
-                        captcha_used = int(line.strip().split("CAPTCHA_USED:")[1])
-                        logger.info(f"Parsed captcha used: {captcha_used}")
-                    except Exception as e:
-                        logger.warning(f"Failed to parse captcha used: {e}")
+            for line in process.stderr.read().splitlines():
+                stderr_lines.append(line)
+                logger.error(line.strip())
 
-            process.wait()
-
-            user = User.query.filter_by(username=task.username).first()  # Ensure task.username is available
-
+            
+            print(process.returncode,"hiii")
             if process.returncode == 0:
                 task.status = "Completed"
             else:
                 task.status = "Failed"
-                for error_line in iter(process.stderr.readline, ''):
-                    logger.error(error_line.strip())
-
                 if user:
-                    user.walletamount += 1  # refund
+                    user.walletamount += 1
 
         except FileNotFoundError:
             task.status = "Failed"
@@ -555,6 +578,7 @@ def run_game_script(task_id):
             retry_commit(db.session)
             logger.info(f"Task ID {task_id} status updated to {task.status}")
             logger.handlers.clear()
+
 def run_game_script1(task_id):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
     log_file = f'logs/{task_id}_{timestamp}.log'
@@ -597,7 +621,7 @@ def run_game_script1(task_id):
 
             process.wait()
 
-            user = User.query.filter_by(username=task.careoff).first()  # Ensure task.username is available
+             # Ensure task.username is available
 
             if process.returncode == 0:
                 task.status = "Completed"
@@ -753,7 +777,7 @@ def view_tasks():
     
 from flask import session, abort
 
-@app.route('/kill_task/<int:task_id>', methods=['GET'])  # Use POST for better semantics
+@app.route('/kill_task/<int:task_id>', methods=['GET'])
 def kill_task(task_id):
     if 'username' not in session:
         abort(401)  # Unauthorized
@@ -766,24 +790,36 @@ def kill_task(task_id):
     if task.careoff != session['username']:
         abort(403)  # Forbidden
 
+    # If task is already completed or failed, do not kill
+    if task.status in ['Completed', 'Failed']:
+        return jsonify({'message': f'Task ID {task_id} has already {task.status.lower()}, cannot be killed.'}), 400
+
     process = active_processes.get(task_id)
 
-    if not process:
-        return jsonify({'error': f'No running process found for task ID {task_id}'}), 404
+    if not process or process.poll() is not None:
+        # Process might have ended but not removed from active_processes
+        task.status = "Failed"
+        retry_commit(db.session)
+        active_processes.pop(task_id, None)
+        return jsonify({'message': f'Task ID {task_id} was not running. Status set to Failed in DB.'}), 200
 
     try:
-        # Try to gracefully terminate the process
         process.terminate()
         process.wait(timeout=5)
+        task.status = "Failed"
+        retry_commit(db.session)
     except subprocess.TimeoutExpired:
         process.kill()
-        return jsonify({'message': f'Task ID {task_id} forcefully terminated'}), 503
+        task.status = "Failed"
+        retry_commit(db.session)
+        return jsonify({'message': f'Task ID {task_id} forcefully terminated and marked as Failed'}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to terminate task ID {task_id}: {str(e)}'}), 500
     finally:
         active_processes.pop(task_id, None)
 
-    return jsonify({'message': f'Task ID {task_id} terminated successfully'}), 200
+    return jsonify({'message': f'Task ID {task_id} terminated successfully and marked as Failed'}), 200
+
 
 
 
