@@ -78,6 +78,8 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)  # Consider hashing passwords
     walletamount = db.Column(db.Float, default=0.0)
     captchaused = db.Column(db.Integer, default=0)
+    tgtoken=db.Column(db.String(300), nullable=True)
+    chatid=db.Column(db.Integer, nullable=True)
 class ScheduledTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     applications = db.Column(db.Text, nullable=False)
@@ -92,6 +94,7 @@ class ScheduledTask(db.Model):
     proxy = db.Column(db.String(10), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     extra = db.Column(db.String(255), nullable=True) 
+    rundate = db.Column(db.String(255), nullable=True) 
 class SchedulingSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     scheduling_time = db.Column(db.Time, nullable=False, default="08:55:00")
@@ -359,8 +362,9 @@ def schedule_task():
 
     data = request.json
     tasks = data.get('tasks')
-    if not tasks:
-        return jsonify({'message': 'No tasks provided'}), 400
+    rundate_str = data.get('rundate')  # <-- Get rundate from POST
+    if not tasks or not rundate_str:
+        return jsonify({'message': 'Tasks and rundate are required'}), 400
 
     task_count = len(tasks)
 
@@ -375,15 +379,18 @@ def schedule_task():
     # Time calculations
     india = pytz.timezone("Asia/Kolkata")
     now = datetime.now(india)
-    today_9am = india.localize(datetime.combine(now.date(), time(9, 0)))
-    tomorrow_6am = india.localize(datetime.combine(now.date() + timedelta(days=1), time(6, 0)))
 
-    # Determine run time
-    if now < today_9am:
+    try:
+        rundate = datetime.strptime(rundate_str, "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({'message': 'Invalid rundate format. Use YYYY-MM-DD'}), 400
+
+    # Determine run time based on rundate
+    if rundate == now.date():
         run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
     else:
-        run_time = tomorrow_6am.astimezone(pytz.utc)
-        #run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
+        run_datetime_ist = india.localize(datetime.combine(rundate, time(8, 44)))
+        run_time = run_datetime_ist.astimezone(pytz.utc)
 
     # Schedule tasks
     for task in tasks:
@@ -396,14 +403,15 @@ def schedule_task():
             slotdate=datetime.strptime(task['slotdate'], "%Y-%m-%d").strftime("%d-%m-%Y"),
             careoff=user.username,
             proxy=task['proxy'],
-            name=task['name']
+            name=task['name'],
+            rundate=run_time
         )
         db.session.add(new_task)
-        db.session.flush()  # get ID before commit
+        db.session.flush()
 
         scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id])
 
-    # Deduct wallet only after successful scheduling
+    # Deduct wallet after successful scheduling
     user.walletamount -= task_count
     db.session.commit()
 
@@ -411,6 +419,7 @@ def schedule_task():
         'message': 'Tasks scheduled successfully',
         'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
     }), 201
+
 @app.route('/schedule1', methods=['POST']) 
 def schedule_task1():
     if 'username' not in session:
@@ -578,6 +587,7 @@ def run_game_script(task_id):
             retry_commit(db.session)
             logger.info(f"Task ID {task_id} status updated to {task.status}")
             logger.handlers.clear()
+from logging.handlers import RotatingFileHandler
 
 def run_game_script1(task_id):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
@@ -585,11 +595,14 @@ def run_game_script1(task_id):
 
     logger = logging.getLogger(f'task_{task_id}')
     logger.setLevel(logging.INFO)
-    file_handler = logging.FileHandler(log_file)
+
+    # Use RotatingFileHandler to limit log file size (1MB here)
+    file_handler = RotatingFileHandler(log_file, maxBytes=1*1024*1024, backupCount=0)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(file_handler)
 
     captcha_used = 0
+    user = None  # Define user early so it's in scope
 
     with app.app_context():
         task = ScheduledTask.query.get(task_id)
@@ -603,7 +616,7 @@ def run_game_script1(task_id):
 
         logger.info(f"Starting task ID {task_id} for application {task.applications}")
 
-        command = ["python", "-u", "c.py", task.applications, task.dob,task.cov ,task.slotdate,task.extra]
+        command = ["python", "-u", "c.py", task.applications, task.dob, task.cov, task.slotdate, task.extra]
         try:
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             active_processes[task_id] = process
@@ -621,15 +634,13 @@ def run_game_script1(task_id):
 
             process.wait()
 
-             # Ensure task.username is available
-
             if process.returncode == 0:
                 task.status = "Completed"
             else:
                 task.status = "Failed"
                 for error_line in iter(process.stderr.readline, ''):
                     logger.error(error_line.strip())
-
+                user = User.query.filter_by(username=session.get('username')).first()
                 if user:
                     user.walletamount += 1  # refund
 
@@ -823,20 +834,23 @@ def kill_task(task_id):
 
 
 
+from flask import send_file, abort
+import os
+
 @app.route('/pdf/<applno>')
 def send_pdf(applno):
-    # Directory where PDF files are stored
-    pdf_directory = os.path.join(app.root_path, 'pdfs')
-    
-    # File name
-    pdf_file = f"{applno}.pdf"
-    
-    # Check if the file exists
-    if not os.path.isfile(os.path.join(pdf_directory, pdf_file)):
-        abort(404, description=f"PDF file for {applno} not found.")
-    
-    # Serve the file
-    return send_from_directory(pdf_directory, pdf_file, as_attachment=True)
+    # Root directory where PDFs are stored
+    pdf_root = os.path.join(app.root_path, '')
+
+    # Walk through all subdirectories
+    for root, dirs, files in os.walk(pdf_root):
+        for file in files:
+            if file.endswith('.pdf') and applno in file:
+                pdf_path = os.path.join(root, file)
+                return send_file(pdf_path, as_attachment=True)
+
+    # If no matching PDF found
+    abort(404, description=f"No PDF found with '{applno}' in filename.")
 
 
 @app.route('/imgtoappl', methods=['POST'])
@@ -1147,45 +1161,91 @@ from flask import request, redirect, url_for, flash
 from flask import request, redirect, url_for, flash
 from werkzeug.security import generate_password_hash  # for password hashing
 
+from flask import request, redirect, url_for, flash, render_template
+
+
 @app.route('/superadmin/user_stats', methods=['GET', 'POST'])
 @superadmin_required
 def user_stats():
-    # If it's a POST request, handle wallet balance update
-    if request.method == 'POST' and 'new_balance' in request.form:
-        careoff = request.form.get('careoff')
-        new_balance = request.form.get('new_balance')
-        user = User.query.filter_by(username=careoff).first()
-        if user:
-            user.walletbalance = float(new_balance)  # update the wallet balance
-            db.session.commit()  # commit the changes to the database
-            flash(f"Wallet balance for {careoff} updated to ₹{new_balance}", 'success')
-        else:
-            flash(f"User {careoff} not found", 'danger')
-        return redirect(url_for('user_stats'))
+    if request.method == 'POST':
+        form = request.form
 
-    # Get all users, including those with no tasks
+        # Update existing user: wallet, tgToken, chatid
+        if 'new_balance' in form and 'careoff' in form:
+            careoff = form.get('careoff')
+            new_balance = form.get('new_balance')
+            new_tgtoken = form.get('new_tgtoken')
+            new_chatid = form.get('new_chatid')
+
+            user = User.query.filter_by(username=careoff).first()
+            if user:
+                try:
+                    user.walletamount = float(new_balance)
+                    if new_tgtoken is not None:
+                        user.tgtoken = new_tgtoken.strip()
+                    if new_chatid is not None:
+                        user.chatid = new_chatid.strip()
+                    db.session.commit()
+                    flash(f"Wallet, tgToken, and chatid for {careoff} updated.", "success")
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f"Error updating user {careoff}: {str(e)}", "danger")
+            else:
+                flash(f"User {careoff} not found", "danger")
+
+            return redirect(url_for('user_stats'))
+
+        # Add new user: includes chatid
+        elif all(k in form for k in ('username', 'password', 'wallet_balance', 'tgtoken')):
+            username = form.get('username').strip()
+            password = form.get('password')
+            wallet_balance = form.get('wallet_balance')
+            tgtoken = form.get('tgtoken').strip()
+            chatid = form.get('chatid', '').strip()
+
+            if User.query.filter_by(username=username).first():
+                flash(f"User {username} already exists.", "danger")
+                return redirect(url_for('user_stats'))
+
+            try:
+                new_user = User(
+                    username=username,
+                    walletamount=float(wallet_balance),
+                    tgtoken=tgtoken,
+                    chatid=chatid if chatid else None
+                )
+                new_user.set_password(password)
+                db.session.add(new_user)
+                db.session.commit()
+                flash(f"User {username} added successfully.", "success")
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error adding user: {str(e)}", "danger")
+
+            return redirect(url_for('user_stats'))
+
+    # GET: Display stats
     users = User.query.all()
-
     stats = []
     for user in users:
         total = ScheduledTask.query.filter_by(careoff=user.username).count()
         failed = ScheduledTask.query.filter_by(careoff=user.username, status='failed').count()
         running = ScheduledTask.query.filter_by(careoff=user.username, status='running').count()
-        wallet = user.walletamount
 
         stats.append({
             'careoff': user.username,
             'total_tasks': total,
             'failed_tasks': failed,
             'running_tasks': running,
-            'wallet_balance': wallet
+            'wallet_balance': user.walletamount,
+            'tgtoken': getattr(user, 'tgtoken', ''),
+            'chatid': getattr(user, 'chatid', '')
         })
 
-    # Group running tasks by user (careoff)
     tasks = ScheduledTask.query.all()
     user_tasks = {}
     for task in tasks:
-        if task.status == 'running':  # assuming task has a status field
+        if task.status == 'running':
             user_tasks.setdefault(task.careoff, []).append(task)
 
     return render_template('superadmin_user_stats.html', user_tasks=user_tasks, stats=stats)
@@ -1196,6 +1256,8 @@ def user_stats():
 def add_user():
     username = request.form.get('username')
     password = request.form.get('password')
+    tgtoken = request.form.get('tgtoken')
+    chatid=request.form.get('chatid')
     wallet_balance = float(request.form.get('wallet_balance'))
 
     # Check if the user already exists
@@ -1209,6 +1271,8 @@ def add_user():
     # Create a new user
     new_user = User(username=username, password=password)
     new_user.walletamount = wallet_balance
+    new_user.tgtoken=tgtoken
+    new_user.chatid=chatid
     db.session.add(new_user)
     db.session.commit()
 
@@ -1220,50 +1284,127 @@ def add_user():
 @superadmin_required
 def update_wallet(careoff):
     new_balance = request.form.get('new_balance')
-    print(f"Attempting to update wallet balance for user: {careoff} with new balance: {new_balance}")
-
-    # Ensure the new_balance is a valid number (float)
+    new_tgtoken = request.form.get('new_tgtoken')
+    new_chatid=request.form.get('new_chatid')
+    # Validate new_balance
     try:
-        new_balance = float(new_balance)  # Convert the new_balance to a float
-    except ValueError:
-        flash(f"Invalid balance value provided for {careoff}.", 'danger')
+        new_balance = float(new_balance)
+    except (ValueError, TypeError):
+        flash(f"Invalid wallet balance for {careoff}.", "danger")
         return redirect(url_for('user_stats'))
 
-    # Find the user by username (careoff)
     user = User.query.filter_by(username=careoff).first()
-    
     if user:
-        print(f"Found user {careoff}, current wallet balance: {user.walletamount}")
-        
-        # Update the wallet balance directly in the User model
         user.walletamount = new_balance
+        user.tgtoken = new_tgtoken.strip() if new_tgtoken else None
+        user.chatid=new_chatid
         try:
-            db.session.commit()  # Commit the changes to the database
-            print(f"Wallet balance for {careoff} updated to ₹{new_balance}")
-            flash(f"Wallet balance for {careoff} updated to ₹{new_balance}", 'success')
+            db.session.commit()
+            flash(f"Updated wallet balance and tgToken for {careoff}.", "success")
         except Exception as e:
-            db.session.rollback()  # Rollback in case of any errors
-            print(f"Error while committing the transaction: {e}")
-            flash(f"Error updating wallet balance for {careoff}. Please try again.", 'danger')
+            db.session.rollback()
+            flash(f"Failed to update data for {careoff}: {e}", "danger")
     else:
-        print(f"User {careoff} not found")
-        flash(f"User {careoff} not found", 'danger')
-    
-    # After commit, check the updated wallet balance and print
-    updated_user = User.query.filter_by(username=careoff).first()
-    print(f"Updated wallet balance for {careoff}: {updated_user.walletamount}")
+        flash(f"User {careoff} not found.", "danger")
 
     return redirect(url_for('user_stats'))
 
+@app.route('/check_slot', methods=['POST'])
+def check_slot():
+    try:
+        input_data = request.get_json()
+        date_str = input_data.get("date")  # Expecting format 'YYYY-MM-DD'
+        today_plus_one = datetime.strptime(date_str, "%Y-%m-%d")
+        print(today_plus_one)
+        s = requests.Session()
+
+        # Navigate the slot pages
+        s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?id=sardlenq",
+            headers={"Referer": "https://sarathi.parivahan.gov.in/sarathiservice/stateSelectBean.do", "Connection": "close"})
+
+        s.post("https://sarathi.parivahan.gov.in:443/slots/stateBean.do",
+            headers={"Content-Type": "application/x-www-form-urlencoded", "Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.dO", "Connection": "close"},
+            data={"stCode": "KL", "stName": "Kerala", "rtoCode": "KL14", "rtoName": "0"})
+
+        s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?subOffice=0&opernType=loadCOVs&trackCode=0",
+            headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
+
+        s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?subOffice=0&selectedCOVs=ANY%20COVs&opernType=checkSlotTimes",
+            headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
+
+        req = s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?subOffice=0&selectedCOVs=ANY%20COVs&opernType=loadDLQuotaDet&trackCode=0&trkrto=0&radioType=RTO",
+                headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
+
+        # Parse table
+        soup = BeautifulSoup(req.content, 'html.parser')
+        table = soup.find('table', class_='table-mod1')
+        df = pd.read_html(str(table).upper())[0]
+        df.columns = df.iloc[0]
+        df = df.tail(-1)
+        from datetime import date, timedelta
+        todaysdate = datetime.today()
+        difference =  today_plus_one -todaysdate
+        print(int(difference.days))
+        # Get last date
+        last_slot_date_str = df['DATE'].iloc[-1]
+        last_slot_date = datetime.strptime(last_slot_date_str, "%d-%m-%Y")
+        slot_plus_one = last_slot_date + timedelta(days=int(difference.days))
+
+        match = slot_plus_one.date() == today_plus_one.date()
+        days_diff = (today_plus_one - slot_plus_one).days
+        print(days_diff)
+        slot_plus_formated = slot_plus_one.strftime('%Y-%m-%d')
+        year = slot_plus_one.year
+        print(slot_plus_one)
+        # Check for holidays
+        holiday_url = f"https://sarathi.parivahan.gov.in/slots/fetchholidayList.do?year={year}&servtype=DL&stcode=KL&rtoCode=KL14"
+        holiday_resp = s.post(holiday_url, headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
+
+        holiday_data =holiday_resp.json()
+# Example slot_plus_one date
+ # Format: YYYY-MM-DD
+        try:
+            # Parse the string response into a Python object
+            holiday_data = json.loads(holiday_data)
+            #print("Holiday Data:", holiday_data)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON: {e}")
+        date_list = [entry['date'] for entry in holiday_data]
+        if slot_plus_formated in date_list:
+            holiday = True
+        else:
+            holiday = slot_plus_one.weekday() == 6  # Sunday
+
+        return jsonify({
+            "last_slot_date": last_slot_date_str,
+            "predicted_date": slot_plus_one.strftime("%d/%m/%Y"),
+            "booking_date": today_plus_one.strftime("%d/%m/%Y"),
+            "holiday": holiday,
+            "days_diff_from_start_date": days_diff
+        })
+
+    except Exception as e:
+        print("json error",e)
+        return jsonify({"error": str(e)}), 500
+@app.route('/<careoff>/tgToken', methods=['GET'])
+def get_tg_info(careoff):
+    user = User.query.filter_by(username=careoff).first()
+    if user:
+        return jsonify({
+            "tgtoken": user.tgtoken or "",
+            "chatid": user.chatid or ""
+        }), 200
+    else:
+        return jsonify({"error": f"User '{careoff}' not found"}), 404
 PORT = 5000
+
 from flask_login import logout_user, login_required
 
 @app.route('/logout')
-@login_required
 def logout():
-    logout_user()  # Logs out the current user
+    session.clear()
     flash('You have been logged out.', 'success')
-    return redirect(url_for('login')) 
+    return redirect(url_for('login'))
 # Start Ngrok with a custom subdomain
 #public_url = ngrok.connect(PORT, "http", url="workable-completely-panther.ngrok-free.app")
 #print(f" * Ngrok tunnel \"{public_url}\" -> http://127.0.0.1:{PORT}")

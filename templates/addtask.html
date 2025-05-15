@@ -3,176 +3,183 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        background-color: #f9f9f9;
-        color: #333;
+    <title>Smart Scheduler</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script>
+      // Trigger page reload on successful task scheduling (hook this where needed)
+      function refreshOnSuccess() {
+        location.reload();
       }
-
-      header {
-        background-color: #4caf50;
-        color: white;
-        padding: 1rem;
-        text-align: center;
-      }
-
-      h2,
-      h3 {
-        color: #4caf50;
-        text-align: center;
-      }
-
-      .container {
-        padding: 1rem;
-        max-width: 1200px;
-        margin: 0 auto;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1rem 0;
-        background-color: white;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      }
-
-      th,
-      td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: center;
-      }
-
-      th {
-        background-color: #4caf50;
-        color: white;
-      }
-
-      button {
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        margin: 5px;
-        cursor: pointer;
-        border-radius: 5px;
-      }
-
-      button:hover {
-        background-color: #45a049;
-      }
-
-      input[type="text"],
-      input[type="date"] {
-        width: 90%;
-        padding: 5px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-      }
-
-      #overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        font-size: 20px;
-        z-index: 9999;
-      }
-
-      .upload-section {
-        margin: 20px 0;
-        text-align: center;
-        background: #fff;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-      }
-
-      @media (max-width: 768px) {
-        table {
-          font-size: 12px;
-        }
-
-        button {
-          padding: 8px 16px;
-          font-size: 14px;
-        }
-
-        input[type="text"],
-        input[type="date"] {
-          font-size: 14px;
-        }
-      }
-    </style>
+    </script>
   </head>
-  <body>
-    <header>
-      
-      <h2>Dashboard</h2>
-      <a href="{{ url_for('logout') }}" style="color: white">Logout</a>
-      <a href="#" style="color: white">Logout</a>
-    </header>
-
-    <div class="container">
-      <div style="text-align: center">
-        <label for="proxy">Proxy (YES/NO):</label>
-        <select id="proxy" name="proxy">
-          <option value="NO" selected>NO</option>
-          <option value="YES">YES</option>
-        </select>
+  <body class="bg-gray-100 text-gray-800">
+    <nav class="bg-green-600 p-4 shadow-md flex justify-between items-center">
+      <h1 class="text-white text-xl font-bold">Smart Scheduler Dashboard</h1>
+      <div>
+        <a
+          href="{{ url_for('logout') }}"
+          class="text-white px-2 hover:underline"
+          >Logout</a
+        >
       </div>
+    </nav>
 
-      <h3>Scheduled Tasks</h3>
-      <table id="taskTable">
-        <thead>
-          <tr>
-            <th>Application No</th>
-            <th>Date of Birth</th>
-            <th>Name</th>
-            <th>COV</th>
-            <th>Status</th>
-            <th>Retry</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+    <main class="max-w-6xl mx-auto p-4">
+      <section class="mb-6">
+        <div class="text-center mb-4">
+          <label for="proxy" class="font-semibold">Proxy (YES/NO):</label>
+          <select id="proxy" name="proxy" class="ml-2 p-1 rounded border">
+            <option value="NO" selected>NO</option>
+            <option value="YES">YES</option>
+          </select>
+        </div>
 
-      <button onclick="addRow()">Add Row</button>
-      <button onclick="fetchAllData()">Fetch All</button>
+        <h2 class="text-2xl text-green-600 font-semibold text-center mb-2">
+          Scheduled Applications
+        </h2>
+        <div class="overflow-x-auto">
+          <table
+            class="w-full bg-white border shadow-md rounded"
+            id="taskTable"
+          >
+            <thead class="bg-green-600 text-white">
+              <tr>
+                <th class="p-2">Application No</th>
+                <th class="p-2">Date of Birth</th>
+                <th class="p-2">Name</th>
+                <th class="p-2">COV</th>
+                <th class="p-2">Status</th>
+                <th class="p-2">Retry</th>
+              </tr>
+            </thead>
+            <tbody id="taskTableBody"></tbody>
+          </table>
+        </div>
 
-      <h3>Slot Date</h3>
-      <label for="slotdate">Enter Slot Date: </label>
-      <input type="date" id="slotdate" name="slotdate" />
-      <button onclick="fetchSlotDate()">Fetch Date</button>
+        <div class="flex flex-wrap justify-center gap-2 mt-4">
+          <button
+            onclick="addRow()"
+            class="bg-green-500 hover:bg-green-700 text-white px-4 py-2 rounded"
+          >
+            Add Application
+          </button>
+          <button
+            onclick="fetchAllData()"
+            class="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          >
+            Fetch All
+          </button>
+        </div>
+      </section>
 
-      <h3>Add Task</h3>
-      <form id="addTaskForm" method="POST">
-        <button type="button" onclick="submitTasks()">Add Task</button>
-      </form>
+      <section class="mb-6">
+        <h2 class="text-2xl text-green-600 font-semibold text-center mb-2">
+          Schedule Slots
+        </h2>
+        <div
+          class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-4"
+        >
+          <div>
+            <label for="slotdate" class="block">Slot Date:</label>
+            <input type="date" id="slotdate" class="p-2 border rounded" />
+          </div>
+          <div>
+            <label for="rundate" class="block">Run Date:</label>
+            <input type="date" id="rundate" class="p-2 border rounded" />
+          </div>
+        </div>
+        <div class="flex justify-center gap-4">
+          <button
+            onclick="fetchSlotDate()"
+            class="bg-indigo-500 hover:bg-indigo-700 text-white px-4 py-2 rounded"
+          >
+            Fetch Date
+          </button>
+          <button
+            onclick="openPredictPopup()"
+            class="bg-yellow-500 hover:bg-yellow-700 text-white px-4 py-2 rounded"
+          >
+            Predict Slot
+          </button>
+        </div>
+      </section>
 
-      <div class="upload-section">
-        <input type="file" id="fileInput" multiple />
-        <button onclick="uploadImages()">Upload</button>
-      </div>
+      <section class="mb-6">
+        <h2 class="text-2xl text-green-600 font-semibold text-center mb-2">
+          Upload Application Files
+        </h2>
+        <div class="bg-white border p-4 rounded shadow-md text-center">
+          <input type="file" id="fileInput" multiple class="mb-2" />
+          <button
+            onclick="uploadImages()"
+            class="bg-purple-500 hover:bg-purple-700 text-white px-4 py-2 rounded"
+          >
+            Upload
+          </button>
+        </div>
+      </section>
+
+      <section class="text-center">
+        <h2 class="text-2xl text-green-600 font-semibold mb-2">
+          Finalize Task Submission
+        </h2>
+        <form id="addTaskForm" method="POST">
+          <button
+            type="button"
+            onclick="submitTasks()"
+            class="bg-pink-500 hover:bg-pink-700 text-white px-6 py-2 rounded"
+          >
+            Submit All Tasks
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <!-- Overlay Loader -->
+    <div
+      id="overlay"
+      class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 hidden justify-center items-center text-white text-xl z-50"
+    >
+      Server is fetching data, please wait...
     </div>
 
-    <div id="overlay">Server is fetching data, please wait...</div>
+    <!-- Predict Slot Modal -->
+    <div
+      id="predictModal"
+      class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 hidden justify-center items-center z-50"
+    >
+      <div class="bg-white p-6 rounded shadow-lg text-center">
+        <h3 class="text-lg font-semibold mb-4">Select Booking Date</h3>
+        <input type="date" id="predictDate" class="p-2 border rounded mb-4" />
+        <div class="flex justify-center gap-4">
+          <button
+            onclick="predictSlot()"
+            class="bg-green-500 hover:bg-green-700 text-white px-4 py-2 rounded"
+          >
+            Check Slot
+          </button>
+          <button
+            onclick="closePredictPopup()"
+            class="bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
       let rowIndex = 0;
 
       function formatDate(dateString) {
         const [year, month, day] = dateString.split("-");
+        return `${day}-${month}-${year}`;
+      }
+      function formatDate1(dateString) {
+        const [year, month, day] = dateString.split("/");
         return `${day}-${month}-${year}`;
       }
 
@@ -186,8 +193,8 @@
         newRow.innerHTML = `
           <td><input type="text" id="applno_${rowIndex}" value="${applno}" required></td>
           <td><input type="date" id="dob_${rowIndex}" value="${dob}" required></td>
-          <td><input type="text" id="name_${rowIndex}" disabled></td>
-          <td><input type="text" id="cov_${rowIndex}" disabled></td>
+          <td><input type="text" id="name_${rowIndex}" required disabled></td>
+          <td><input type="text" id="cov_${rowIndex}" required disabled></td>
           <td id="status_${rowIndex}">Pending</td>
           <td><button onclick="fetchRow(${rowIndex})" id="retry_${rowIndex}" style="display:none">Retry</button></td>
         `;
@@ -287,8 +294,11 @@
       }
 
       function submitTasks() {
+        document.getElementById("overlay").style.display = "flex";
         const tasks = [];
         const slotdate = document.getElementById("slotdate").value;
+        const rundate = document.getElementById("rundate").value; // Keep outside the loop
+
         for (let i = 1; i <= rowIndex; i++) {
           const applno = document.getElementById(`applno_${i}`).value;
           const dob = formatDate(document.getElementById(`dob_${i}`).value);
@@ -302,19 +312,81 @@
               name,
               cov,
               slotdate,
-
               proxy: document.getElementById("proxy").value,
+              // Do NOT include rundate here
             });
           }
         }
 
+        // Final data object
+        const data = {
+          rundate, // sent once, outside task list
+          tasks,
+        };
+
+        // Send it to server
         fetch("/schedule", {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        })
+          .then((response) => response.json())
+          .then((res) => {
+            document.getElementById("overlay").style.display = "none";
+            console.log(res);
+            alert(res.message);
+          })
+          .catch((error) => {
+            document.getElementById("overlay").style.display = "none";
+            console.error("Error:", error);
+            alert("An error occurred while scheduling tasks.");
+          });
+      }
+
+      function openPredictPopup() {
+        document.getElementById("predictModal").style.display = "flex";
+      }
+
+      function closePredictPopup() {
+        document.getElementById("predictModal").style.display = "none";
+      }
+
+      function predictSlot() {
+        const selectedDate = document.getElementById("predictDate").value;
+        if (!selectedDate) {
+          alert("Please select a date.");
+          return;
+        }
+        document.getElementById("overlay").style.display = "flex";
+        fetch("/check_slot", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tasks }),
+          body: JSON.stringify({ date: selectedDate }),
         })
           .then((res) => res.json())
-          .then((result) => alert(result.message));
+
+          .then((res) => {
+            document.getElementById("overlay").style.display = "none";
+            if (res.holiday === false) {
+              document.getElementById("slotdate").value = formatDate1(
+                res.predicted_date
+              );
+              document.getElementById("rundate").value =
+                document.getElementById("predictDate").value;
+              alert("Slot available and date updated.");
+            } else {
+              alert("Selected date is a holiday or not available.");
+              document.getElementById("slotdate").value = "";
+            }
+            closePredictPopup();
+          })
+          .catch(() => {
+            alert("Failed to check slot availability.");
+            document.getElementById("slotdate").value = "";
+            closePredictPopup();
+          });
       }
 
       function uploadImages() {

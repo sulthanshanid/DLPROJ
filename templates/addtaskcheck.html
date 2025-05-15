@@ -119,7 +119,6 @@
     <header>
       <h2>Dashboard</h2>
       <a href="{{ url_for('logout') }}" style="color: white">Logout</a>
-      
     </header>
 
     <div class="container">
@@ -150,10 +149,11 @@
       <button onclick="fetchAllData()">Fetch All</button>
 
       <h3>Slot Date</h3>
-      <label for="slotdate">Enter maximum Slot Date: </label>
-      <input type="date" id="slotdate" name="slotdate" />
+
       <label for="slotdate1">Enter minimum Slot Date: </label>
       <input type="date" id="slotdate1" name="slotdate1" />
+      <label for="slotdate">Enter maximum Slot Date: </label>
+      <input type="date" id="slotdate" name="slotdate" />
       <button onclick="fetchSlotDate()">Fetch Date</button>
 
       <h3>Add Task</h3>
@@ -306,7 +306,6 @@
               cov,
               slotdate,
               slotdate1,
-
 
               proxy: document.getElementById("proxy").value,
             });
