@@ -1348,7 +1348,7 @@ def check_slot():
         # Get last date
         last_slot_date_str = df['DATE'].iloc[-1]
         last_slot_date = datetime.strptime(last_slot_date_str, "%d-%m-%Y")
-        slot_plus_one = last_slot_date + timedelta(days=int(difference.days))
+        slot_plus_one = last_slot_date + timedelta(days=abs(int(difference.days)))
 
         match = slot_plus_one.date() == today_plus_one.date()
         days_diff = (today_plus_one - slot_plus_one).days
