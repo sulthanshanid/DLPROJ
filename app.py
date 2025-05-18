@@ -1314,26 +1314,27 @@ def check_slot():
     try:
         input_data = request.get_json()
         date_str = input_data.get("date")  # Expecting format 'YYYY-MM-DD'
-        today_plus_one = datetime.strptime(date_str, "%Y-%m-%d")
-        print(today_plus_one)
+        today_plus_one = datetime.strptime(date_str, "%Y-%m-%d").date()
+        todaysdate = datetime.today().date()
+
         s = requests.Session()
 
         # Navigate the slot pages
         s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?id=sardlenq",
-            headers={"Referer": "https://sarathi.parivahan.gov.in/sarathiservice/stateSelectBean.do", "Connection": "close"})
+              headers={"Referer": "https://sarathi.parivahan.gov.in/sarathiservice/stateSelectBean.do", "Connection": "close"})
 
         s.post("https://sarathi.parivahan.gov.in:443/slots/stateBean.do",
-            headers={"Content-Type": "application/x-www-form-urlencoded", "Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.dO", "Connection": "close"},
-            data={"stCode": "KL", "stName": "Kerala", "rtoCode": "KL14", "rtoName": "0"})
+               headers={"Content-Type": "application/x-www-form-urlencoded", "Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.dO", "Connection": "close"},
+               data={"stCode": "KL", "stName": "Kerala", "rtoCode": "KL14", "rtoName": "0"})
 
         s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?subOffice=0&opernType=loadCOVs&trackCode=0",
-            headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
+              headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
 
         s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?subOffice=0&selectedCOVs=ANY%20COVs&opernType=checkSlotTimes",
-            headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
+              headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
 
         req = s.get("https://sarathi.parivahan.gov.in:443/slots/dlSlotEnquiry.do?subOffice=0&selectedCOVs=ANY%20COVs&opernType=loadDLQuotaDet&trackCode=0&trkrto=0&radioType=RTO",
-                headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
+                    headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
 
         # Parse table
         soup = BeautifulSoup(req.content, 'html.parser')
@@ -1341,34 +1342,32 @@ def check_slot():
         df = pd.read_html(str(table).upper())[0]
         df.columns = df.iloc[0]
         df = df.tail(-1)
-        from datetime import date, timedelta
-        todaysdate = datetime.today()
-        difference =  today_plus_one -todaysdate
-        print(int(difference.days))
-        # Get last date
-        last_slot_date_str = df['DATE'].iloc[-1]
-        last_slot_date = datetime.strptime(last_slot_date_str, "%d-%m-%Y")
-        slot_plus_one = last_slot_date + timedelta(days=abs(int(difference.days)))
 
-        match = slot_plus_one.date() == today_plus_one.date()
-        days_diff = (today_plus_one - slot_plus_one).days
-        print(days_diff)
+        # Days difference from today
+        difference_days = (today_plus_one - todaysdate).days
+        abs_days = abs(difference_days)
+
+        # Get last slot date
+        last_slot_date_str = df['DATE'].iloc[-1]
+        last_slot_date = datetime.strptime(last_slot_date_str, "%d-%m-%Y").date()
+
+        slot_plus_one = last_slot_date + timedelta(days=abs_days)
         slot_plus_formated = slot_plus_one.strftime('%Y-%m-%d')
-        year = slot_plus_one.year
-        print(slot_plus_one)
+
+        # Difference from today_plus_one to slot_plus_one
+        days_diff = (today_plus_one - slot_plus_one).days
+
         # Check for holidays
+        year = slot_plus_one.year
         holiday_url = f"https://sarathi.parivahan.gov.in/slots/fetchholidayList.do?year={year}&servtype=DL&stcode=KL&rtoCode=KL14"
         holiday_resp = s.post(holiday_url, headers={"Referer": "https://sarathi.parivahan.gov.in/slots/stateBean.do", "Connection": "close"})
-
         holiday_data =holiday_resp.json()
-# Example slot_plus_one date
- # Format: YYYY-MM-DD
         try:
-            # Parse the string response into a Python object
             holiday_data = json.loads(holiday_data)
-            #print("Holiday Data:", holiday_data)
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON: {e}")
+            holiday_data = []
+
         date_list = [entry['date'] for entry in holiday_data]
         if slot_plus_formated in date_list:
             holiday = True
@@ -1384,8 +1383,9 @@ def check_slot():
         })
 
     except Exception as e:
-        print("json error",e)
+        print("Error in /check_slot:", e)
         return jsonify({"error": str(e)}), 500
+
 @app.route('/<careoff>/tgToken', methods=['GET'])
 def get_tg_info(careoff):
     user = User.query.filter_by(username=careoff).first()
