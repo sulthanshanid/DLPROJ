@@ -1380,14 +1380,17 @@ def update_wallet(careoff):
         flash(f"User {careoff} not found.", "danger")
 
     return redirect(url_for('user_stats'))
-
+from zoneinfo import ZoneInfo 
 @app.route('/check_slot', methods=['POST'])
 def check_slot():
     try:
         input_data = request.get_json()
         date_str = input_data.get("date")  # Expecting format 'YYYY-MM-DD'
         today_plus_one = datetime.strptime(date_str, "%Y-%m-%d").date()
-        todaysdate = datetime.today().date()
+         # For Python 3.9+
+
+        todaysdate = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        
 
         s = requests.Session()
 
