@@ -235,7 +235,7 @@
       function rescheduleTask(taskId, applno, dob, name, cov, slotdate) {
         const popup = document.createElement("div");
         popup.style.position = "fixed";
-        popup.style.top = "30%";
+        popup.style.top = "25%";
         popup.style.left = "35%";
         popup.style.backgroundColor = "white";
         popup.style.border = "1px solid #ccc";
@@ -245,29 +245,37 @@
         popup.id = "reschedule-popup";
 
         popup.innerHTML = `
-        <h3>Reschedule Task</h3>
-        <label>Run Date:</label><br>
-        <input type="date" id="popup-rundate"><br><br>
+    <h3>Reschedule Task</h3>
 
-        <label>Use Proxy:</label><br>
-        <select id="popup-proxy">
-            <option value="NO">No</option>
-            <option value="YES">Yes</option>
-        </select><br><br>
+    <label>Slot Date:</label><br>
+    <input type="date" id="popup-slotdate" value="${slotdate}"><br><br>
 
-        <button id="popup-submit">Submit</button>
-        <button id="popup-cancel">Cancel</button>
-    `;
+    <label>Run Date:</label><br>
+    <input type="date" id="popup-rundate"><br><br>
+
+    <label>Use Proxy:</label><br>
+    <select id="popup-proxy">
+        <option value="NO">No</option>
+        <option value="YES">Yes</option>
+    </select><br><br>
+
+    <button id="popup-submit">Submit</button>
+    <button id="popup-cancel">Cancel</button>
+  `;
 
         document.body.appendChild(popup);
 
-        // Handle Submit
+        document.getElementById("popup-cancel").onclick = function () {
+          popup.remove();
+        };
+
         document.getElementById("popup-submit").onclick = function () {
           const rundate = document.getElementById("popup-rundate").value;
+          const newSlotDate = document.getElementById("popup-slotdate").value;
           const proxy = document.getElementById("popup-proxy").value;
 
-          if (!rundate) {
-            alert("Please select a run date.");
+          if (!rundate || !newSlotDate) {
+            alert("Please select both slot date and run date.");
             return;
           }
 
@@ -279,7 +287,7 @@
             dob,
             name,
             cov,
-            slotdate,
+            slotdate: newSlotDate,
             proxy,
           };
 
@@ -293,9 +301,8 @@
             .then((res) => res.json())
             .then((data) => {
               alert(data.message);
-              location.reload(); // ✅ Refresh after alert
+              location.reload(); // ✅ Refresh
             })
-
             .catch(() => alert("Error while rescheduling."));
         };
       }
