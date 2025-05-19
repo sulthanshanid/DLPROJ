@@ -231,7 +231,14 @@
           })
           .catch(() => alert("Failed to kill the task."));
       }
-
+      function formatDate(dateString) {
+        const [year, month, day] = dateString.split("-");
+        return `${day}-${month}-${year}`;
+      }
+      function formatDate1(dateString) {
+        const [year, month, day] = dateString.split("/");
+        return `${day}-${month}-${year}`;
+      }
       function rescheduleTask(taskId, applno, dob, name, cov, slotdate) {
         const formattedDate = formatDate(slotdate);
         const popup = document.createElement("div");
