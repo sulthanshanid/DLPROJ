@@ -69,7 +69,14 @@ STARTBEFOREONLY = "TRUE"
 
 
 print(APPLNO,DOB,TYPE,SLOTDATE,CAREOFF,PROXYCON,STARTBEFOREONLY,SLEEPCON)
+india = ZoneInfo("Asia/Kolkata")
 
+def check_time_limit():
+    now = datetime.now(india)
+    limit_time = now.replace(hour=9, minute=15, second=0, microsecond=0)
+    if now >= limit_time:
+        print("\n❌ Exiting because time is 9:30 AM or later.")
+        exit()
 
 STARTBEFOREONLY = "TRUE"
 
@@ -247,6 +254,7 @@ while failed==0:
                 os.remove(temp_img_path)
                 break
         while True:
+            check_time_limit()
             print(f"CAPTCHA_USED:{captchaused}")
             rewww02_url = "https://sarathi.parivahan.gov.in:443/slots/dldetsubmit.do"
             rewww02_headers = {"Content-Type": "application/x-www-form-urlencoded",
