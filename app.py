@@ -591,20 +591,51 @@ def run_game_script(task_id):
             logger.handlers.clear()
 from logging.handlers import RotatingFileHandler
 
+import os
+import logging
+import subprocess
+from datetime import datetime
+from flask import session
+from logging import FileHandler
+
+
+# Custom handler that trims old lines when log size exceeds max_bytes
+class TrimmingFileHandler(FileHandler):
+    def __init__(self, filename, max_bytes, **kwargs):
+        super().__init__(filename, **kwargs)
+        self.max_bytes = max_bytes
+
+    def emit(self, record):
+        super().emit(record)
+        self._trim_log()
+
+    def _trim_log(self):
+        try:
+            if os.path.getsize(self.baseFilename) > self.max_bytes:
+                with open(self.baseFilename, 'rb') as f:
+                    f.seek(-self.max_bytes, os.SEEK_END)
+                    lines = f.read().splitlines()
+                with open(self.baseFilename, 'wb') as f:
+                    f.write(b'\n'.join(lines[-500:]))  # Keep only last 500 lines
+        except Exception as e:
+            print(f"[Log Trimming Error] {e}")
+
+# Actual task runner function
 def run_game_script1(task_id):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
     log_file = f'logs/{task_id}_{timestamp}.log'
 
     logger = logging.getLogger(f'task_{task_id}')
     logger.setLevel(logging.INFO)
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
-    # Use RotatingFileHandler to limit log file size (1MB here)
-    file_handler = RotatingFileHandler(log_file, maxBytes=1*1024*1024, backupCount=0)
+    file_handler = TrimmingFileHandler(log_file, max_bytes=1 * 1024 * 1024)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(file_handler)
 
     captcha_used = 0
-    user = None  # Define user early so it's in scope
+    user = None
 
     with app.app_context():
         task = ScheduledTask.query.get(task_id)
@@ -614,7 +645,7 @@ def run_game_script1(task_id):
 
         task.status = "Running"
         task.log_file = log_file
-        retry_commit(db.session)
+        db.session.commit()
 
         logger.info(f"Starting task ID {task_id} for application {task.applications}")
 
@@ -625,8 +656,6 @@ def run_game_script1(task_id):
 
             for line in iter(process.stdout.readline, ''):
                 logger.info(line.strip())
-
-                # Capture "CAPTCHA_USED:" lines
                 if "CAPTCHA_USED:" in line:
                     try:
                         captcha_used = int(line.strip().split("CAPTCHA_USED:")[1])
@@ -642,9 +671,9 @@ def run_game_script1(task_id):
                 task.status = "Failed"
                 for error_line in iter(process.stderr.readline, ''):
                     logger.error(error_line.strip())
-                user = User.query.filter_by(username=session.get('username')).first()
+                user = User.query.filter_by(username=task.careoff).first()
                 if user:
-                    user.walletamount += 1  # refund
+                    user.walletamount += 1  # Refund on failure
 
         except FileNotFoundError:
             task.status = "Failed"
@@ -655,9 +684,10 @@ def run_game_script1(task_id):
                 user.captchaused += captcha_used
 
             task.log_file = log_file
-            retry_commit(db.session)
+            db.session.commit()
             logger.info(f"Task ID {task_id} status updated to {task.status}")
             logger.handlers.clear()
+
 
 @app.route('/fetch_slot_checkdate', methods=['POST'])
 
