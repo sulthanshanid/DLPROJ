@@ -392,8 +392,20 @@ def schedule_task():
         run_datetime_ist = india.localize(datetime.combine(rundate, time(8, 44)))
         run_time = run_datetime_ist.astimezone(pytz.utc)
 
+    
     # Schedule tasks
+    # Get the current count of scheduled tasks
+    existing_task_count = ScheduledTask.query.filter(
+        
+        ScheduledTask.rundate == run_time,
+        ScheduledTask.status.in_(["Pending", "Running"])
+    ).count()
+
+    proxy_count = existing_task_count  # start with what already exists
+
     for task in tasks:
+        force_proxy = proxy_count >= 6
+
         new_task = ScheduledTask(
             applications=task['applno'],
             dob=datetime.strptime(task['dob'], "%d-%m-%Y").strftime("%d-%m-%Y"),
@@ -402,24 +414,28 @@ def schedule_task():
             status="Pending",
             slotdate=datetime.strptime(task['slotdate'], "%Y-%m-%d").strftime("%d-%m-%Y"),
             careoff=user.username,
-            proxy=task['proxy'],
+            proxy="YES" if force_proxy else task['proxy'],
             name=task['name'],
             rundate=run_time
         )
+
         db.session.add(new_task)
         db.session.flush()
+
         job_id = f"job_{user.username}_{new_task.id}"
         scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id)
-        
 
-    # Deduct wallet after successful scheduling
-    user.walletamount -= task_count
-    db.session.commit()
+        proxy_count += 1  # increment after scheduling
 
-    return jsonify({
-        'message': 'Tasks scheduled successfully',
-        'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
-    }), 201
+
+        # Deduct wallet after successful scheduling
+        user.walletamount -= task_count
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Tasks scheduled successfully',
+            'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
+        }), 201
 
 @app.route('/schedule1', methods=['POST']) 
 def schedule_task1():
