@@ -487,7 +487,7 @@ def schedule_task1():
         db.session.flush()  # get ID before commit
 
         job_id = f"job_{user.username}_{new_task.id}"
-        scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id)
+        scheduler.add_job(run_game_script1, 'date', run_date=run_time, args=[new_task.id], id=job_id)
 
     # Deduct wallet only after successful scheduling
     user.walletamount -= task_count
