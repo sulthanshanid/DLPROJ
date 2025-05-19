@@ -233,6 +233,7 @@
       }
 
       function rescheduleTask(taskId, applno, dob, name, cov, slotdate) {
+        const formattedDate = formatDate(slotdate);
         const popup = document.createElement("div");
         popup.style.position = "fixed";
         popup.style.top = "25%";
@@ -246,9 +247,9 @@
 
         popup.innerHTML = `
     <h3>Reschedule Task</h3>
-
+     
     <label>Slot Date:</label><br>
-    <input type="date" id="popup-slotdate" value="${slotdate}"><br><br>
+    <input type="date" id="popup-slotdate" value="${formattedDate}"><br><br>
 
     <label>Run Date:</label><br>
     <input type="date" id="popup-rundate"><br><br>
