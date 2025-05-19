@@ -2,7 +2,6 @@ import requests
 import shutil
 import sys
 import datetime
-import easyocr
 import random
 import collections
 collections.Callable = collections.abc.Callable
@@ -11,7 +10,6 @@ import requests
 import shutil
 import sys
 import datetime
-import easyocr
 import random
 import collections
 collections.Callable = collections.abc.Callable
