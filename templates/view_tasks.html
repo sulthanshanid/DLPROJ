@@ -174,7 +174,7 @@
               "Killed" %}
               <button
                 class="reschedule-btn"
-                onclick="rescheduleTask({{ task.id }}, '{{ task.applications }}', '{{ task.dob }}', '{{ task.name }}', '{{ task.cov }}', 'formatDate({{ task.slotdate }})')"
+                onclick="rescheduleTask({{ task.id }}, '{{ task.applications }}', '{{ task.dob }}', '{{ task.name }}', '{{ task.cov }}', '{{ task.slotdate.strftime('%Y-%m-%d') }}')"
               >
                 Reschedule
               </button>
