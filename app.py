@@ -408,8 +408,9 @@ def schedule_task():
         )
         db.session.add(new_task)
         db.session.flush()
-
-        scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id])
+        job_id = f"job_{user.username}_{new_task.id}"
+        scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id)
+        
 
     # Deduct wallet after successful scheduling
     user.walletamount -= task_count
@@ -469,7 +470,8 @@ def schedule_task1():
         db.session.add(new_task)
         db.session.flush()  # get ID before commit
 
-        scheduler.add_job(run_game_script1, 'date', run_date=run_time, args=[new_task.id])
+        job_id = f"job_{user.username}_{new_task.id}"
+        scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id)
 
     # Deduct wallet only after successful scheduling
     user.walletamount -= task_count
@@ -782,7 +784,8 @@ def cancel_task(task_id):
     if not task:
         return jsonify({"error": "Task not found or not authorized"}), 404
 
-    job_id = f"task_{task_id}"  # Assuming job id pattern
+    job_id = f"job_{session['username']}_{task_id}"
+ # Assuming job id pattern
 
     job = scheduler.get_job(job_id)
     if job:
