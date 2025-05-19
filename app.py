@@ -21,6 +21,7 @@ from dateutil import parser
 from bs4 import BeautifulSoup
 from subprocess import Popen
 import os.path
+
 import pandas as pd
 import re
 from PIL import Image
