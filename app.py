@@ -769,6 +769,29 @@ def add_task1():
     
     # Return tasks in a simple HTML table view
     return render_template('addtaskcheck.html')
+
+@app.route('/cancel_task/<int:task_id>', methods=['POST'])
+def cancel_task(task_id):
+    username = session.get('username')
+    if not username:
+        return jsonify({"error": "Unauthorized - login required"}), 401
+
+    # Fetch the task owned by this user
+    task = ScheduledTask.query.filter_by(id=task_id, careoff=username).first()
+
+    if not task:
+        return jsonify({"error": "Task not found or not authorized"}), 404
+
+    job_id = f"task_{task_id}"  # Assuming job id pattern
+
+    job = scheduler.get_job(job_id)
+    if job:
+        scheduler.remove_job(job_id)
+        task.status = "cancelled"  # Or whatever your DB status for cancelled is
+        db.session.commit()
+        return jsonify({"message": "Task cancelled successfully."}), 200
+    else:
+        return jsonify({"error": "Scheduled job not found."}), 404
 from flask import session, redirect, url_for
 
 @app.route('/view_tasks')

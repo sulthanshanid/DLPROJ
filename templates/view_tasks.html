@@ -79,6 +79,16 @@
         cursor: pointer;
         text-decoration: none;
       }
+      .actions .cancel-btn {
+        background-color: #e67e22;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+      }
+      .actions .cancel-btn:hover {
+        background-color: #ca6f1e;
+      }
+
       .actions a.view-log {
         background-color: #16a085;
       }
@@ -156,7 +166,14 @@
               >
             </td>
             <td class="actions">
-              {% if task.status == "Completed" %}
+              {% if task.status == "Pending" %}
+              <button
+                class="cancel-btn"
+                onclick="cancelTask({{ task.id }}, this)"
+              >
+                Cancel
+              </button>
+              {% endif %} {% if task.status == "Completed" %}
               <a
                 href="{{ url_for('send_pdf', applno=task.applications) }}"
                 class="download-pdf"
@@ -239,6 +256,24 @@
         const [year, month, day] = dateString.split("/");
         return `${day}-${month}-${year}`;
       }
+      function cancelTask(taskId, el) {
+        if (!confirm("Are you sure you want to cancel this scheduled task?"))
+          return;
+
+        fetch(`/cancel_task/${taskId}`, { method: "POST" })
+          .then((res) => {
+            if (res.ok) {
+              alert("Task cancelled successfully.");
+              const row = el.closest("tr");
+              row.querySelector(".status").textContent = "Cancelled";
+              el.remove(); // remove the cancel button
+            } else {
+              alert("Failed to cancel the task.");
+            }
+          })
+          .catch(() => alert("Error while cancelling the task."));
+      }
+
       function rescheduleTask(taskId, applno, dob, name, cov, slotdate) {
         const formattedDate = formatDate(slotdate);
         const popup = document.createElement("div");
