@@ -107,7 +107,7 @@ while True:
         print("start")
         # Check if the current time is between 10 AM and 8 PM
         print(current_hour,current_minute)
-        if 9 <= current_hour < 20:
+        if 0 <= current_hour < 20:
             # Check if the minutes are between 50 and 5 (inclusive)
             if (0 <= current_minute <= 60) or (0 <= current_minute <= 5):
 
