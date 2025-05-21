@@ -1,4 +1,8 @@
 from PIL import Image
+import imgkit
+import datetime
+import pytz
+from datetime import datetime
 import requests
 import shutil
 import os
@@ -40,7 +44,7 @@ TELEGRAM_TOKEN_1 = '5865265365:AAHQDbV6qt8hDfWzCsOCMUTwgK2L57SvcUc'
 TELEGRAM_CHAT_ID = '631331311'
 TELEGRAM_CHAT_ID1 = '846861253'
 PHOTO_PATH = 'SLOT_TABLE_NONEMPTY.png'
-PDF_PATH = "pdfs/"+APPLNO + '.pdf'
+PDF_PATH = APPLNO+".pdf"
 
 # Debug print
 print(f"APPLNO: {APPLNO}, DOB: {DOB}, TYPE: {TYPE}")
@@ -87,10 +91,7 @@ while True:
        
 
         
-        import datetime
-        # Get the current date and time
-        import pytz
-        from datetime import datetime
+        
 
 # Specify the IST time zone
         ist_timezone = pytz.timezone('Asia/Kolkata')
@@ -298,9 +299,14 @@ while True:
                                             lmv_procceddata = {"iscov": "4", "__checkbox_iscov": "4", "covcd": "4,",
                                                                "trkcd": '',
                                                                "method:proceedBookslot": "  PROCEED TO BOOK  "}
+                                            if TYPE in ("LMVMCWG", "MCWG+LMV", "LMV+MCWG"):
+                                                   TYPE = "MCWGLMV"
+                                            elif TYPE in ("LMVMCWOG", "MCWOG+LMV", "LMV+MCWOG"):
+                                                   TYPE = "MCWOGLMV"
+
                                             if TYPE == "erick":
                                                 proceeddata = erick_procceddata
-                                            if TYPE == "MCWGLMV":
+                                            if TYPE == "MCWGLMV" :
                                                 proceeddata = mcwglmv_procceddata
 
                                             if TYPE == "LMV":

@@ -458,8 +458,9 @@ def schedule_task1():
         return jsonify({'message': 'Insufficient wallet balance to schedule tasks'}), 403
 
     # Time calculations
+    
     india = pytz.timezone("Asia/Kolkata")
-    now = datetime.now(india)
+    now = datetime.now().astimezone(india)
     today_9am = india.localize(datetime.combine(now.date(), time(9, 0)))
     tomorrow_6am = india.localize(datetime.combine(now.date() + timedelta(days=1), time(6, 0)))
 
