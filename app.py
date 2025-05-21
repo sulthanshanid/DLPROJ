@@ -357,6 +357,7 @@ scheduler.start()
 
 @app.route('/schedule', methods=['POST']) 
 def schedule_task():
+    
     if 'username' not in session:
         return jsonify({'message': 'Unauthorized'}), 401
 
@@ -367,7 +368,7 @@ def schedule_task():
         return jsonify({'message': 'Tasks and rundate are required'}), 400
 
     task_count = len(tasks)
-
+    print(tasks)
     # Fetch user and check wallet
     user = User.query.filter_by(username=session['username']).first()
     if not user:
@@ -420,11 +421,12 @@ def schedule_task():
         )
 
         db.session.add(new_task)
+
         db.session.flush()
 
         job_id = f"job_{user.username}_{new_task.id}"
-        scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id)
-
+        print(scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id),task)
+        
         proxy_count += 1  # increment after scheduling
 
 
@@ -432,7 +434,7 @@ def schedule_task():
         user.walletamount -= task_count
         db.session.commit()
 
-        return jsonify({
+    return jsonify({
             'message': 'Tasks scheduled successfully',
             'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
         }), 201
