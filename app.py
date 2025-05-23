@@ -70,8 +70,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'supersecretkey'
 
 db = SQLAlchemy(app)
-scheduler = BackgroundScheduler()
+from apscheduler.executors.pool import ThreadPoolExecutor
+
+executors = {
+    'default': ThreadPoolExecutor(max_workers=50)  # Allow up to 50 concurrent jobs
+}
+
+scheduler = BackgroundScheduler(executors=executors)
 scheduler.start()
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -350,8 +357,7 @@ from datetime import datetime, timedelta, time
 
 
 # Assuming `scheduler` has been initialized as an instance of BackgroundScheduler
-scheduler = BackgroundScheduler()
-scheduler.start()
+
 
 
 
