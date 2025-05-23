@@ -535,6 +535,7 @@ from datetime import datetime
 
 
 def run_game_script(task_id):
+    print("start",task_id)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S%f')
     log_file = f'logs/{task_id}_{timestamp}.log'
 
