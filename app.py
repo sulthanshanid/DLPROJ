@@ -355,20 +355,21 @@ scheduler.start()
 
 
 
-@app.route('/schedule', methods=['POST']) 
+@app.route('/schedule', methods=['POST'])  
 def schedule_task():
-    
     if 'username' not in session:
         return jsonify({'message': 'Unauthorized'}), 401
 
     data = request.json
     tasks = data.get('tasks')
     rundate_str = data.get('rundate')  # <-- Get rundate from POST
+
     if not tasks or not rundate_str:
         return jsonify({'message': 'Tasks and rundate are required'}), 400
 
     task_count = len(tasks)
-    print(tasks)
+    print("Received tasks:", tasks)
+
     # Fetch user and check wallet
     user = User.query.filter_by(username=session['username']).first()
     if not user:
@@ -386,23 +387,29 @@ def schedule_task():
     except ValueError:
         return jsonify({'message': 'Invalid rundate format. Use YYYY-MM-DD'}), 400
 
-    # Determine run time based on rundate
-    if rundate == now.date():
+    # Logging for debug
+    print("IST now:", now.strftime("%Y-%m-%d %H:%M:%S"))
+    print("Server UTC now:", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+
+    # Fix for midnight UTC mismatch
+    rundate_dt = india.localize(datetime.combine(rundate, time(0, 0)))
+
+    if rundate_dt.date() == now.date() and now.time() < time(5, 30):
+        # Early morning case (before 5:30 AM IST), still "today"
         run_time = (now + timedelta(seconds=30)).astimezone(pytz.utc)
     else:
         run_datetime_ist = india.localize(datetime.combine(rundate, time(8, 44)))
         run_time = run_datetime_ist.astimezone(pytz.utc)
 
-    
-    # Schedule tasks
-    # Get the current count of scheduled tasks
+    print("Task scheduled for (UTC):", run_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+    # Count existing tasks for same time
     existing_task_count = ScheduledTask.query.filter(
-        
         ScheduledTask.rundate == run_time,
         ScheduledTask.status.in_(["Pending", "Running"])
     ).count()
 
-    proxy_count = existing_task_count  # start with what already exists
+    proxy_count = existing_task_count
 
     for task in tasks:
         force_proxy = proxy_count >= 6
@@ -421,23 +428,22 @@ def schedule_task():
         )
 
         db.session.add(new_task)
-
         db.session.flush()
 
         job_id = f"job_{user.username}_{new_task.id}"
-        print(scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id),task)
-        
-        proxy_count += 1  # increment after scheduling
+        scheduler.add_job(run_game_script, 'date', run_date=run_time, args=[new_task.id], id=job_id)
+        print("Scheduled:", task)
 
+        proxy_count += 1
 
-        # Deduct wallet after successful scheduling
-        user.walletamount -= task_count
-        db.session.commit()
+    # Deduct wallet once for all
+    user.walletamount -= task_count
+    db.session.commit()
 
     return jsonify({
-            'message': 'Tasks scheduled successfully',
-            'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
-        }), 201
+        'message': 'Tasks scheduled successfully',
+        'scheduled_time': run_time.strftime('%Y-%m-%d %H:%M:%S UTC')
+    }), 201
 
 @app.route('/schedule1', methods=['POST']) 
 def schedule_task1():

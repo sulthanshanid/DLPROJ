@@ -3,3 +3,4 @@ logs/*
 SLOT_TABLE_NONEMPTY.png
 SLOT_TABLE.csv
 CAPTCHA.jpg
+uploads/*
