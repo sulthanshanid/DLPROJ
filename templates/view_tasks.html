@@ -236,15 +236,12 @@
         if (!confirm("Are you sure you want to kill this task?")) return;
 
         fetch(`/kill_task/${taskId}`, { method: "GET" })
-          .then((res) => {
-            if (res.ok) {
-              alert("Task killed successfully.");
-              const row = el.closest("tr");
-              row.querySelector(".status").textContent = "Killed";
-              el.remove();
-            } else {
-              alert("Failed to kill the task.");
-            }
+          .then((res) => res.json()) // parse JSON body
+          .then((data) => {
+            alert(data.message); // use the actual response message
+            const row = el.closest("tr");
+            row.querySelector(".status").textContent = "Killed";
+            el.remove();
           })
           .catch(() => alert("Failed to kill the task."));
       }

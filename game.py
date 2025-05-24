@@ -75,8 +75,10 @@ def check_time_limit():
     now = datetime.now(india)
     limit_time = now.replace(hour=9, minute=15, second=0, microsecond=0)
     if now >= limit_time:
-        print("\n❌ Exiting because time is 9:30 AM or later.")
-        exit()
+        print("\n Exiting because time is 9:30 AM or later.")
+        import sys
+        sys.exit(1)  # Non-zero return code indicates failure
+
 
 STARTBEFOREONLY = "TRUE"
 
@@ -254,7 +256,9 @@ while failed==0:
                 os.remove(temp_img_path)
                 break
         while True:
+            
             check_time_limit()
+            
             print(f"CAPTCHA_USED:{captchaused}")
             rewww02_url = "https://sarathi.parivahan.gov.in:443/slots/dldetsubmit.do"
             rewww02_headers = {"Content-Type": "application/x-www-form-urlencoded",
@@ -388,7 +392,7 @@ while failed==0:
                         if (int(SLEEPCON) == 1):
                             SECS = [8, 9, 10, 11, 12, 13, 14, 15]
                         if (int(SLEEPCON) == 2):
-                            SECS = [4, 5, 6, 7, 8]
+                            SECS = [4, 5, 6]
                         if (int(SLEEPCON) == 3):
                             SECS = [0]
 
@@ -402,6 +406,10 @@ while failed==0:
                         # #print(FINAL_CONTENT)
                         status = BeautifulSoup(FINAL_CONTENT, 'html.parser')
                         status1=BeautifulSoup(FINAL_CONTENT1, 'html.parser')
+                        if "Quota Completed for the Date" in FINAL_CONTENT1:
+                            print("Quota Completed for the Date")
+                            SLEEPCON=3
+                            continue
                         if Keyword3 in FINAL_CONTENT1:
                             print("SLOTBOOKED " + APPLNO)
                             ##bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
@@ -457,7 +465,9 @@ while failed==0:
                             ##bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
                             ##bot1 = telegram.Bot(token=TELEGRAM_BOT_TOKEN1)
                             ##bot.sendDocument(chat_id=TELEGRAM_CHAT_ID, document=open(PDF_PATH, 'rb'))
-                            exit()
+                            import sys
+                            sys.exit(1)  # Non-zero return code indicates failure
+
                         try:
                             bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
                             bot1 = telegram.Bot(token=TELEGRAM_BOT_TOKEN1)
