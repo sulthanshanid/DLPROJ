@@ -504,23 +504,24 @@ def schedule_task():
 
         proxy_count += 1
 
-    prev_balance = user.walletamount
-    user.walletamount -= task_count
-    db.session.flush()  # Get updated balance
+        prev_balance = user.walletamount
+        user.walletamount -= task_count
+        db.session.flush()  # Get updated balance
 
-# Log the transaction
-    txn = WalletTransaction(
-    user_id=user.id,
-    type='debit',
-    amount=task_count,
-    previous_balance=prev_balance,
-    current_balance=user.walletamount,
-    application_no=tasks[0]['applno'],  # Or loop for each
-    description='Task scheduling'
-    )
-    db.session.add(txn)
+    # Log the transaction
+        txn = WalletTransaction(
+        user_id=user.id,
+        type='debit',
+        amount=1,
+        previous_balance=prev_balance,
+        current_balance=user.walletamount,
+        application_no=task['applno'],  # Or loop for each
+        description='Task scheduling'
+        )
+        db.session.add(txn)
+        db.session.commit()
 
-    db.session.commit()
+    
 
     return jsonify({
         'message': 'Tasks scheduled successfully',
