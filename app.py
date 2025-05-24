@@ -505,7 +505,7 @@ def schedule_task():
         proxy_count += 1
 
         prev_balance = user.walletamount
-        user.walletamount -= task_count
+        user.walletamount -= 2
         db.session.flush()  # Get updated balance
 
     # Log the transaction
