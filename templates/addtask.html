@@ -190,7 +190,7 @@
           .getElementsByTagName("tbody")[0];
         const newRow = tableBody.insertRow();
         rowIndex++;
-
+        console.log(rowIndex);
         newRow.id = `row_${rowIndex}`; // Assign ID to delete easily
 
         newRow.innerHTML = `
@@ -214,7 +214,7 @@
 
       function fetchAllData() {
         const data = [];
-        for (let i = 2; i <= rowIndex; i++) {
+        for (let i = 1; i <= rowIndex; i++) {
           const applno = document.getElementById(`applno_${i}`).value;
           const dobRaw = document.getElementById(`dob_${i}`).value;
           if (!applno || !dobRaw) continue;
@@ -311,7 +311,7 @@
         const slotdate = document.getElementById("slotdate").value;
         const rundate = document.getElementById("rundate").value; // Keep outside the loop
 
-        for (let i = 2; i <= rowIndex; i++) {
+        for (let i = 1; i <= rowIndex; i++) {
           const applno = document.getElementById(`applno_${i}`).value;
           const dob = formatDate(document.getElementById(`dob_${i}`).value);
           const name = document.getElementById(`name_${i}`).value;
@@ -435,7 +435,6 @@
                 .then((data) => {
                   overlay.style.display = "none"; // <-- move here to hide after work is done
                   data.data.forEach((item) => {
-                    rowIndex++; // increment for new row
                     addRow(item.applno, item.dob);
                   });
 
