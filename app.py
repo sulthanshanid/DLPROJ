@@ -1,61 +1,72 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session as d
-from flask_sqlalchemy import SQLAlchemy
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
-import subprocess
-from flask_login import login_required, current_user
-import threading
+# Standard library
 import os
-from pytz import timezone
-
+import re
+import io
 import json
-from pyngrok import ngrok
-ngrok.set_auth_token("2wfpiN1qtzcfqeX87UaTqXyhAWJ_3AUsK1K7dTcBrWV6XFdGR")
-import pytz
-from flask import flash
-import requests
-from lxml.html import soupparser
-import re
+import base64
 import shutil
-import collections
-collections.Callable = collections.abc.Callable
-from dateutil import parser
-from bs4 import BeautifulSoup
-from subprocess import Popen
-import os.path
-
-import pandas as pd
-import re
-from PIL import Image
-import os
-from anticaptchaofficial.imagecaptcha import *
-
-import subprocess
-import datetime
-from os import listdir
-from string import whitespace
-from dateutil import parser
-from datetime import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
+import zipfile
+from logging import FileHandler
+from logging.handlers import RotatingFileHandler
+import logging
+import tempfile
 import subprocess
 import threading
 import traceback
-import subprocess
-import logging
-import os
-from datetime import datetime
-import subprocess
-import logging
-import os
-from datetime import datetime
-import requests
-from bs4 import BeautifulSoup
-import pandas as pd
-import os
-from flask import Flask, send_from_directory, abort
+from os import listdir
+from string import whitespace
+from zipfile import ZipFile
 from functools import wraps
-from flask import session, abort
+from logging.handlers import RotatingFileHandler
+from datetime import datetime, time, timedelta
+from collections.abc import Callable
+
+# Flask and extensions
+from flask import (
+    Flask, render_template, request, jsonify, redirect,
+    url_for, session, flash, send_file, send_from_directory, abort, Response
+)
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import (
+    login_required, current_user, logout_user
+)
+from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
+
+# Scheduling
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor
+
+# Timezones and date parsing
+import pytz
+from pytz import timezone
+from dateutil import parser
+from zoneinfo import ZoneInfo
+
+# HTTP and scraping
+import requests
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+from bs4 import BeautifulSoup
+from lxml.html import soupparser
+
+# File and image handling
+from PIL import Image
+import pandas as pd
+
+# Anti-captcha
+from anticaptchaofficial.imagecaptcha import *
+
+# Ngrok
+from pyngrok import ngrok
+ngrok.set_auth_token("2wfpiN1qtzcfqeX87UaTqXyhAWJ_3AUsK1K7dTcBrWV6XFdGR")
+from flask import session, redirect, url_for
+import subprocess
+import logging
+import sqlite3
+from datetime import datetime, time
+import pytz
+
+
 
 def superadmin_required(f):
     @wraps(f)
@@ -65,14 +76,14 @@ def superadmin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-from flask import session
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'supersecretkey'
 
 db = SQLAlchemy(app)
-from apscheduler.executors.pool import ThreadPoolExecutor
+
 
 executors = {
     'default': ThreadPoolExecutor(max_workers=50)  # Allow up to 50 concurrent jobs
@@ -108,6 +119,17 @@ class ScheduledTask(db.Model):
 class SchedulingSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     scheduling_time = db.Column(db.Time, nullable=False, default="08:55:00")
+class WalletTransaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    type = db.Column(db.String(10))  # "credit" or "debit"
+    amount = db.Column(db.Float, nullable=False)
+    previous_balance = db.Column(db.Float)
+    current_balance = db.Column(db.Float)
+    application_no = db.Column(db.String(100))  # From ScheduledTask
+    task_id = db.Column(db.Integer, db.ForeignKey('scheduled_task.id'), nullable=True)
+    description = db.Column(db.String(255))  # Optional reason text
 
     
 with app.app_context():
@@ -136,10 +158,42 @@ def create_admin_user():
 
 @app.route('/')
 def index():
-    if 'logged_in' not in d:
-        return redirect(url_for('login'))
-    return redirect(url_for('dashboard'))
+    username = session.get('username')
+    if username:
+        if username == 'admin':  # or whatever your admin username is
+            return redirect('/superadmin/dashboard')
+        else:
+            return redirect('/dashboard')
+    else:
+        return redirect('/login')
+import subprocess
+import sys
+from flask import Flask, render_template_string
+import subprocess
+import sys
+@app.route('/running_games')
+def running_games():
+    if sys.platform.startswith('win'):
+        # Windows: Using powershell to get processes with command line info
+        cmd = [
+            "powershell",
+            "-Command",
+            "Get-WmiObject Win32_Process | "
+            "Where-Object { $_.CommandLine -match 'game.py' -or $_.CommandLine -match 'c.py' } | "
+            "Select-Object ProcessId, CommandLine | Format-Table -AutoSize"
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        output = proc.stdout or "No matching processes found."
+    else:
+        # Linux/macOS: ps aux and grep for game.py or c.py
+        cmd = "ps aux | grep -E 'game.py|c.py' | grep -v grep"
+        proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        output = proc.stdout.strip() or "No matching processes found."
 
+    return render_template_string('''
+        <h1>Running Processes with game.py or c.py</h1>
+        <pre style="background:#eee; padding:10px;">{{ output }}</pre>
+    ''', output=output)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -173,6 +227,8 @@ def dashboard():
 
 @app.route('/fetch_task_data', methods=['POST'])
 def fetch_task_data():
+                        if 'username' not in session:
+                           return jsonify({'message': 'Unauthorized'}), 401
                         caperror = "Enter Valid Captcha.".encode()
                         data = request.json
                         print(data)
@@ -356,7 +412,7 @@ def fetch_task_data():
                         return jsonify(response_data)
                             
 
-from datetime import datetime, timedelta, time
+
 
 
 # Assuming `scheduler` has been initialized as an instance of BackgroundScheduler
@@ -386,7 +442,7 @@ def schedule_task():
     if user.walletamount < task_count:
         return jsonify({'message': 'Insufficient wallet balance to schedule tasks'}), 403
 
-    # Use IST
+    # Use IST timezone
     india = pytz.timezone("Asia/Kolkata")
     now = datetime.now(india)
 
@@ -397,12 +453,22 @@ def schedule_task():
 
     print("IST now:", now.strftime("%Y-%m-%d %H:%M:%S"))
 
-    # Decide run time in IST
-    if rundate == now.date() :
-        run_time = now + timedelta(seconds=30)
+    target_time_today = india.localize(datetime.combine(now.date(), time(9, 3)))
+
+
+    if rundate == now.date():
+        if now >= target_time_today:
+            # After 9:03 AM today → schedule for 8:44 AM next day
+            next_day = now.date() + timedelta(days=1)
+            run_time = india.localize(datetime.combine(next_day, time(8, 44)))
+        else:
+            # Before 9:03 AM today → schedule for 8:44 AM today
+            run_time = india.localize(datetime.combine(rundate, time(8, 44)))
     else:
-        run_time = datetime.combine(rundate, time(8, 44))
-        run_time = india.localize(run_time)
+        # Not today → schedule for 8:44 AM of given rundate
+        run_time = india.localize(datetime.combine(rundate, time(8, 44)))
+
+    print("Scheduled runtime:", run_time.strftime("%Y-%m-%d %H:%M:%S"))
 
     print("Task scheduled for (IST):", run_time.strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -438,7 +504,22 @@ def schedule_task():
 
         proxy_count += 1
 
+    prev_balance = user.walletamount
     user.walletamount -= task_count
+    db.session.flush()  # Get updated balance
+
+# Log the transaction
+    txn = WalletTransaction(
+    user_id=user.id,
+    type='debit',
+    amount=task_count,
+    previous_balance=prev_balance,
+    current_balance=user.walletamount,
+    application_no=tasks[0]['applno'],  # Or loop for each
+    description='Task scheduling'
+    )
+    db.session.add(txn)
+
     db.session.commit()
 
     return jsonify({
@@ -492,7 +573,7 @@ def schedule_task1():
         job_id = f"job_{user.username}_{new_task.id}"
         scheduler.add_job(run_game_script1, 'date', run_date=run_time, args=[new_task.id], id=job_id)
 
-    user.walletamount -= task_count
+    user.walletamount -= (task_count*2)
     db.session.commit()
 
     return jsonify({
@@ -505,7 +586,7 @@ def schedule_task1():
 
 # Ensure the 'logs' directory exists
 os.makedirs('logs', exist_ok=True)
-import sqlite3
+
 def retry_commit(session, retries=5, delay=1):
     for attempt in range(retries):
         try:
@@ -519,15 +600,14 @@ def retry_commit(session, retries=5, delay=1):
                 raise  # Re-raise other database errors
     raise sqlite3.OperationalError("Failed to commit to the database after multiple retries.")
 
-import subprocess
-import logging
-from datetime import datetime
+
 
 
 
 
 
 def run_game_script(task_id):
+    user= User.query.filter_by(username=task.careoff).first()
     print("start",task_id)
     timestamp = datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%Y%m%d_%H%M%S%f')
     log_file = f'logs/{task_id}_{timestamp}.log'
@@ -539,7 +619,7 @@ def run_game_script(task_id):
     logger.addHandler(file_handler)
 
     captcha_used = 0
-    user = None
+    
 
     with app.app_context():
         task = ScheduledTask.query.get(task_id)
@@ -594,7 +674,19 @@ def run_game_script(task_id):
             else:
                 task.status = "Failed"
                 if user:
-                    user.walletamount += 1
+                        prev_balance = user.walletamount - 1
+                        txn = WalletTransaction(
+                            user_id=user.id,
+                            type='credit',
+                            amount=1,
+                            previous_balance=prev_balance,
+                            current_balance=user.walletamount,
+                            application_no=task.applications,
+                            task_id=task.id,
+                            description='Refund for failed task'
+                        )
+                        db.session.add(txn)
+
 
         except FileNotFoundError:
             task.status = "Failed"
@@ -608,14 +700,7 @@ def run_game_script(task_id):
             retry_commit(db.session)
             logger.info(f"Task ID {task_id} status updated to {task.status}")
             logger.handlers.clear()
-from logging.handlers import RotatingFileHandler
 
-import os
-import logging
-import subprocess
-from datetime import datetime
-from flask import session
-from logging import FileHandler
 
 
 # Custom handler that trims old lines when log size exceeds max_bytes
@@ -693,7 +778,7 @@ def run_game_script1(task_id):
                     logger.error(error_line.strip())
                 user = User.query.filter_by(username=task.careoff).first()
                 if user:
-                    user.walletamount += 1  # Refund on failure
+                    user.walletamount += 2  # Refund on failure
 
         except FileNotFoundError:
             task.status = "Failed"
@@ -712,6 +797,8 @@ def run_game_script1(task_id):
 @app.route('/fetch_slot_checkdate', methods=['POST'])
 
 def fetch_slot_checkdate():
+    if 'username' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
     slots = ['SLOT1 (08.00-08.10)', 'SLOT2 (08.11-08.20)', 'SLOT3 (08.21-08.30)', 'SLOT4 (08.31-08.40)']
     
     # Simulate fetching slotdate and checkdate
@@ -782,13 +869,15 @@ def fetch_slot_checkdate():
         # If the filtered DataFrame is empty, prompt the user to enter a date
         SLOTDATE = "" 
     return jsonify({"slotdate": SLOTDATE})
-from flask import render_template, Response, jsonify
-import time
 
 @app.route('/live_status/<int:task_id>')
 def live_status(task_id):
+    if 'username' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
     task = ScheduledTask.query.get(task_id)
-    if not task or not task.log_file:
+    task1 = ScheduledTask.query.filter_by(id=task_id, careoff=session.get('username')).first()
+
+    if not task1 or not task1.log_file:
         return "Task or log file not found", 404
 
     with open(task.log_file, 'r') as f:
@@ -834,16 +923,44 @@ def cancel_task(task_id):
     if job:
         scheduler.remove_job(job_id)
         task.status = "cancelled"  # Or whatever your DB status for cancelled is
+        user = User.query.filter_by(username=task.careoff).first()
+        if user:
+            prev_balance = user.walletamount - 1
+            txn = WalletTransaction(
+                user_id=user.id,
+                type='credit',
+                amount=1,
+                previous_balance=prev_balance,
+                current_balance=user.walletamount,
+                application_no=task.applications,
+                task_id=task.id,
+                description='Refund for cancelled task'
+            )
+            db.session.add(txn)
+        
         db.session.commit()
         return jsonify({"message": "Task cancelled successfully."}), 200
     else:
         if (task.status=="Pending"):
          task.status = "cancelled"
+         user = User.query.filter_by(username=task.careoff).first()
+         if user:
+            prev_balance = user.walletamount - 1
+            txn = WalletTransaction(
+                user_id=user.id,
+                type='credit',
+                amount=1,
+                previous_balance=prev_balance,
+                current_balance=user.walletamount,
+                application_no=task.applications,
+                task_id=task.id,
+                description='Refund for Cancelled task'
+            )
+            db.session.add(txn)
          db.session.commit()
          return jsonify({"message": "Scheduled job not found. but still pending ,So status changed"}), 200
         else:
             return jsonify({"message": "Scheduled job not found"}), 404
-from flask import session, redirect, url_for
 
 @app.route('/view_tasks')
 def view_tasks():
@@ -860,14 +977,15 @@ def view_tasks():
 
     # Return tasks in a simple HTML table view
     
-from flask import session, abort
 
 @app.route('/kill_task/<int:task_id>', methods=['GET'])
 def kill_task(task_id):
     if 'username' not in session:
         abort(401)  # Unauthorized
+    
+    task = ScheduledTask.query.filter_by(id=task_id, careoff=session.get('username')).first()
 
-    task = ScheduledTask.query.get(task_id)
+    
 
     if not task:
         return jsonify({'error': f'Task ID {task_id} not found'}), 404
@@ -876,40 +994,86 @@ def kill_task(task_id):
         abort(403)  # Forbidden
 
     # If task is already completed or failed, do not kill
-    if task.status in ['Completed', 'Failed']:
+    if task.status in ['Completed', 'Failed','Killed','cancelled']:
         return jsonify({'message': f'Task ID {task_id} has already {task.status.lower()}, cannot be killed.'}), 200
 
     process = active_processes.get(task_id)
 
     if not process or process.poll() is not None:
         # Process might have ended but not removed from active_processes
-        task.status = "Failed"
+        task.status = "Killed"
         retry_commit(db.session)
         active_processes.pop(task_id, None)
+        user = User.query.filter_by(username=task.careoff).first()
+        if user:
+            prev_balance = user.walletamount - 1
+            txn = WalletTransaction(
+                user_id=user.id,
+                type='credit',
+                amount=1,
+                previous_balance=prev_balance,
+                current_balance=user.walletamount,
+                application_no=task.applications,
+                task_id=task.id,
+                description='Refund for Killed task'
+            )
+            db.session.add(txn)
+            retry_commit(db.session)
         return jsonify({'message': f'Task ID {task_id} was not running. Status set to Failed in DB.'}), 200
+        
 
     try:
         process.terminate()
         process.wait(timeout=5)
         task.status = "Killed"
+        user = User.query.filter_by(username=task.careoff).first()
+        if user:
+            prev_balance = user.walletamount - 1
+            txn = WalletTransaction(
+                user_id=user.id,
+                type='credit',
+                amount=1,
+                previous_balance=prev_balance,
+                current_balance=user.walletamount,
+                application_no=task.applications,
+                task_id=task.id,
+                description='Refund for Killed task'
+            )
+            db.session.add(txn)
         retry_commit(db.session)
     except subprocess.TimeoutExpired:
         process.kill()
         task.status = "Killed"
+        user = User.query.filter_by(username=task.careoff).first()
+        if user:
+            prev_balance = user.walletamount - 1
+            txn = WalletTransaction(
+                user_id=user.id,
+                type='credit',
+                amount=1,
+                previous_balance=prev_balance,
+                current_balance=user.walletamount,
+                application_no=task.applications,
+                task_id=task.id,
+                description='Refund for Killed task'
+            )
+            db.session.add(txn)
         retry_commit(db.session)
         return jsonify({'message': f'Task ID {task_id} forcefully terminated and marked as Failed'}), 200
     except Exception as e:
         return jsonify({'error': f'Failed to terminate task ID {task_id}: {str(e)}'}), 500
     finally:
+
         active_processes.pop(task_id, None)
+
 
     return jsonify({'message': f'Task ID {task_id} terminated successfully and marked as Failed'}), 200
 
 
 
 
-from flask import send_file, abort
-import os
+
+
 
 @app.route('/pdf/<applno>')
 def send_pdf(applno):
@@ -927,18 +1091,10 @@ def send_pdf(applno):
     abort(404, description=f"No PDF found with '{applno}' in filename.")
 
 
-import zipfile
-import os
-import re
-import base64
-import tempfile
-import requests
-from datetime import datetime
-from flask import request, jsonify, session, abort
-from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 @app.route('/imgtoappl', methods=['POST']) 
 def img_to_appl():
+
     if 'username' not in session:
         abort(401)
 
@@ -1090,7 +1246,7 @@ def upload_images():
 
     return jsonify({'paths': paths})
 
-from flask import send_file
+
 @app.route('/superadmin/dashboard', methods=['GET', 'POST'])
 @superadmin_required
   # Assuming superadmin has a login system
@@ -1159,13 +1315,30 @@ def kill_taskk(task_id):
 
     try:
         scheduler.remove_job(task_id)
-
+        task = ScheduledTask.query.get(task_id)
+        task.status="Cancelled"
+        user = User.query.filter_by(username=task.careoff).first()
+        if user:
+            prev_balance = user.walletamount - 1
+            txn = WalletTransaction(
+                user_id=user.id,
+                type='credit',
+                amount=1,
+                previous_balance=prev_balance,
+                current_balance=user.walletamount,
+                application_no=task.applications,
+                task_id=task.id,
+                description='Refund for Killed task by ADmin'
+            )
+            db.session.add(txn)
+        retry_commit(db.session)
         flash(f'Task {task_id} has been killed!', 'success')
     except Exception as e:
         flash(f'Error killing task {task_id}: {str(e)}', 'danger')
 
     return redirect(url_for('superadmin_dashboard'))
-from werkzeug.utils import secure_filename
+
+
 UPLOAD_FOLDER = 'uploads'  # Folder to store uploaded images
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif','zip'}  # Allowed file extensions
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -1176,15 +1349,12 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-from flask import session, abort
 
 
 @app.route('/pdfs/<careoff>')
 @superadmin_required
 def zip_pdfs_by_careoff(careoff):
-    import datetime
-    import io
-    from zipfile import ZipFile
+    
 
     # Get today's date as folder name (e.g., '27-10-2025')
     today = datetime.date.today().strftime("%d-%m-%Y")
@@ -1219,12 +1389,7 @@ def zip_pdfs_by_careoff(careoff):
         as_attachment=True
     )
 
-from flask import request, redirect, url_for, flash
 
-from flask import request, redirect, url_for, flash
-from werkzeug.security import generate_password_hash  # for password hashing
-
-from flask import request, redirect, url_for, flash, render_template
 
 
 @app.route('/superadmin/user_stats', methods=['GET', 'POST'])
@@ -1243,11 +1408,23 @@ def user_stats():
             user = User.query.filter_by(username=careoff).first()
             if user:
                 try:
+                    prev_balance = user.walletamount
                     user.walletamount = float(new_balance)
+
+                    txn = WalletTransaction(
+                        user_id=user.id,
+                        type='credit' if float(new_balance) > prev_balance else 'debit',
+                        amount=abs(float(new_balance) - prev_balance),
+                        previous_balance=prev_balance,
+                        current_balance=user.walletamount,
+                        description='Admin wallet adjustment via user_stats'
+                    )
+                    
                     if new_tgtoken is not None:
                         user.tgtoken = new_tgtoken.strip()
                     if new_chatid is not None:
                         user.chatid = new_chatid.strip()
+                    db.session.add(txn)
                     db.session.commit()
                     flash(f"Wallet, tgToken, and chatid for {careoff} updated.", "success")
                 except Exception as e:
@@ -1358,11 +1535,25 @@ def update_wallet(careoff):
 
     user = User.query.filter_by(username=careoff).first()
     if user:
+        prev_balance = user.walletamount
         user.walletamount = new_balance
+
+        txn = WalletTransaction(
+            user_id=user.id,
+            type='credit' if new_balance > prev_balance else 'debit',
+            amount=abs(new_balance - prev_balance),
+            previous_balance=prev_balance,
+            current_balance=user.walletamount,
+            description='Admin wallet adjustment via update_wallet'
+        )
+        
+
         user.tgtoken = new_tgtoken.strip() if new_tgtoken else None
         user.chatid=new_chatid
         try:
+            db.session.add(txn)
             db.session.commit()
+            
             flash(f"Updated wallet balance and tgToken for {careoff}.", "success")
         except Exception as e:
             db.session.rollback()
@@ -1371,9 +1562,11 @@ def update_wallet(careoff):
         flash(f"User {careoff} not found.", "danger")
 
     return redirect(url_for('user_stats'))
-from zoneinfo import ZoneInfo 
+
 @app.route('/check_slot', methods=['POST'])
 def check_slot():
+    if 'username' not in session:
+        return jsonify({'message': 'Unauthorized'}), 401
     try:
         input_data = request.get_json()
         date_str = input_data.get("date")  # Expecting format 'YYYY-MM-DD'
@@ -1464,7 +1657,7 @@ def get_tg_info(careoff):
         return jsonify({"error": f"User '{careoff}' not found"}), 404
 PORT = 5000
 
-from flask_login import logout_user, login_required
+
 
 @app.route('/logout')
 def logout():
@@ -1474,5 +1667,21 @@ def logout():
 # Start Ngrok with a custom subdomain
 #public_url = ngrok.connect(PORT, "http", url="workable-completely-panther.ngrok-free.app")
 #print(f" * Ngrok tunnel \"{public_url}\" -> http://127.0.0.1:{PORT}")
+
+
+@app.route('/wallet/history')
+def wallet_history():
+    if 'username' not in session:
+        return redirect(url_for('login'))  # Force login if not logged in
+
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return redirect(url_for('login'))  # Double safety
+
+    txns = WalletTransaction.query.filter_by(user_id=user.id).order_by(WalletTransaction.timestamp.desc()).all()
+    return render_template('wallet_history.html', transactions=txns, user=user)
+
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

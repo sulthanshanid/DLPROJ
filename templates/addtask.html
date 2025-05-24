@@ -53,6 +53,7 @@
                 <th class="p-2">COV</th>
                 <th class="p-2">Status</th>
                 <th class="p-2">Retry</th>
+                <th class="p-2">Action</th>
               </tr>
             </thead>
             <tbody id="taskTableBody"></tbody>
@@ -190,19 +191,30 @@
         const newRow = tableBody.insertRow();
         rowIndex++;
 
+        newRow.id = `row_${rowIndex}`; // Assign ID to delete easily
+
         newRow.innerHTML = `
-          <td><input type="text" id="applno_${rowIndex}" value="${applno}" required></td>
-          <td><input type="date" id="dob_${rowIndex}" value="${dob}" required></td>
-          <td><input type="text" id="name_${rowIndex}" required disabled></td>
-          <td><input type="text" id="cov_${rowIndex}" required disabled></td>
-          <td id="status_${rowIndex}">Pending</td>
-          <td><button onclick="fetchRow(${rowIndex})" id="retry_${rowIndex}" style="display:none">Retry</button></td>
-        `;
+    <td><input type="text" id="applno_${rowIndex}" value="${applno}" required></td>
+    <td><input type="date" id="dob_${rowIndex}" value="${dob}" required></td>
+    <td><input type="text" id="name_${rowIndex}" required disabled></td>
+    <td><input type="text" id="cov_${rowIndex}" required disabled></td>
+    <td id="status_${rowIndex}">Pending</td>
+    <td>
+      <button onclick="fetchRow(${rowIndex})" id="retry_${rowIndex}" style="display:none">Retry</button>
+    </td>
+    <td>
+      <button onclick="deleteRow(${rowIndex})" class="bg-red-500 hover:bg-red-700 text-white px-2 py-1 rounded">Delete</button>
+    </td>
+  `;
+      }
+      function deleteRow(index) {
+        const row = document.getElementById(`row_${index}`);
+        if (row) row.remove();
       }
 
       function fetchAllData() {
         const data = [];
-        for (let i = 1; i <= rowIndex; i++) {
+        for (let i = 2; i <= rowIndex; i++) {
           const applno = document.getElementById(`applno_${i}`).value;
           const dobRaw = document.getElementById(`dob_${i}`).value;
           if (!applno || !dobRaw) continue;
@@ -299,7 +311,7 @@
         const slotdate = document.getElementById("slotdate").value;
         const rundate = document.getElementById("rundate").value; // Keep outside the loop
 
-        for (let i = 1; i <= rowIndex; i++) {
+        for (let i = 2; i <= rowIndex; i++) {
           const applno = document.getElementById(`applno_${i}`).value;
           const dob = formatDate(document.getElementById(`dob_${i}`).value);
           const name = document.getElementById(`name_${i}`).value;
@@ -422,13 +434,11 @@
                 .then((res) => res.json())
                 .then((data) => {
                   overlay.style.display = "none"; // <-- move here to hide after work is done
-                  data.data.forEach((item, index) => {
-                    addRow();
-                    document.getElementById(`applno_${index + 1}`).value =
-                      item.applno;
-                    document.getElementById(`dob_${index + 1}`).value =
-                      item.dob;
+                  data.data.forEach((item) => {
+                    rowIndex++; // increment for new row
+                    addRow(item.applno, item.dob);
                   });
+
                   alert("Images processed and data populated.");
                 })
                 .catch((err) => {

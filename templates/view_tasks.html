@@ -272,7 +272,16 @@
       }
 
       function rescheduleTask(taskId, applno, dob, name, cov, slotdate) {
-        const formattedDate = formatDate(slotdate);
+        const row = document
+          .querySelector(`button[onclick*="rescheduleTask(${taskId}"]`)
+          .closest("tr");
+        const rundateText = row.cells[3].textContent.trim();
+        const status = row.querySelector(".status").textContent.trim();
+
+        const isFailedWithNoRunDate =
+          (!rundateText || rundateText.toLowerCase() === "none") &&
+          status === "Failed";
+
         const popup = document.createElement("div");
         popup.style.position = "fixed";
         popup.style.top = "25%";
@@ -284,24 +293,38 @@
         popup.style.boxShadow = "0 0 10px rgba(0,0,0,0.3)";
         popup.id = "reschedule-popup";
 
-        popup.innerHTML = `
-    <h3>Reschedule Task</h3>
-     
-    <label>Slot Date:</label><br>
-    <input type="date" id="popup-slotdate" value="${formattedDate}"><br><br>
-
-    <label>Run Date:</label><br>
-    <input type="date" id="popup-rundate"><br><br>
-
-    <label>Use Proxy:</label><br>
-    <select id="popup-proxy">
-        <option value="NO">No</option>
-        <option value="YES">Yes</option>
-    </select><br><br>
-
-    <button id="popup-submit">Submit</button>
-    <button id="popup-cancel">Cancel</button>
-  `;
+        if (isFailedWithNoRunDate) {
+          popup.innerHTML = `
+      <h3>Reschedule Task</h3>
+      <label>Start Date:</label><br>
+      <input type="date" id="popup-slotdate"><br><br>
+      <label>End Date:</label><br>
+      <input type="date" id="popup-slotdate1"><br><br>
+      <label>Proxy:</label><br>
+      <select id="popup-proxy">
+          <option value="NO">No</option>
+          <option value="YES">Yes</option>
+      </select><br><br>
+      <button id="popup-submit">Submit</button>
+      <button id="popup-cancel">Cancel</button>
+    `;
+        } else {
+          const formattedDate = formatDate(slotdate);
+          popup.innerHTML = `
+      <h3>Reschedule Task</h3>
+      <label>Slot Date:</label><br>
+      <input type="date" id="popup-slotdate" value="${formattedDate}"><br><br>
+      <label>Run Date:</label><br>
+      <input type="date" id="popup-rundate"><br><br>
+      <label>Use Proxy:</label><br>
+      <select id="popup-proxy">
+          <option value="NO">No</option>
+          <option value="YES">Yes</option>
+      </select><br><br>
+      <button id="popup-submit">Submit</button>
+      <button id="popup-cancel">Cancel</button>
+    `;
+        }
 
         document.body.appendChild(popup);
 
@@ -310,38 +333,62 @@
         };
 
         document.getElementById("popup-submit").onclick = function () {
-          const rundate = document.getElementById("popup-rundate").value;
-          const newSlotDate = document.getElementById("popup-slotdate").value;
-          const proxy = document.getElementById("popup-proxy").value;
+          const endpoint = isFailedWithNoRunDate ? "/schedule1" : "/schedule";
 
-          if (!rundate || !newSlotDate) {
-            alert("Please select both slot date and run date.");
+          let payload = { applno, dob, name, cov };
+           
+          if (isFailedWithNoRunDate) {
+            const slotdate = document.getElementById("popup-slotdate").value;
+            const slotdate1 = document.getElementById("popup-slotdate1").value;
+            const proxy = document.getElementById("popup-proxy").value;
+            if (!slotdate || !slotdate1) {
+              alert("Please select both Start and End dates.");
+              return;
+            }
+            payload.slotdate = slotdate;
+            payload.slotdate1 = slotdate1;
+            payload.proxy=proxy;
+            
+          } else {
+            const rundate = document.getElementById("popup-rundate").value;
+            const slotdate = document.getElementById("popup-slotdate").value;
+            const proxy = document.getElementById("popup-proxy").value;
+
+            if (!rundate || !slotdate) {
+              alert("Please select both slot date and run date.");
+              return;
+            }
+            payload.slotdate = slotdate;
+            payload.proxy = proxy;
+
+            fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ rundate, tasks: [payload] }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                alert(data.message);
+                location.reload();
+              })
+              .catch(() => alert("Error while rescheduling."));
             return;
           }
 
-          // Close popup
-          document.body.removeChild(popup);
-
-          const task = {
-            applno,
-            dob,
-            name,
-            cov,
-            slotdate: newSlotDate,
-            proxy,
-          };
-
-          fetch("/schedule", {
+          // For schedule1 (no rundate)
+          fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ rundate, tasks: [task] }),
+            body: JSON.stringify({ tasks: [payload] }),
           })
             .then((res) => res.json())
             .then((data) => {
               alert(data.message);
-              location.reload(); // ✅ Refresh
+              location.reload();
             })
             .catch(() => alert("Error while rescheduling."));
         };
